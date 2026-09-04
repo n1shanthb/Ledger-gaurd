@@ -1,0 +1,41 @@
+{
+  "$schema": "https://eips.ethereum.org/assets/eip-7730/schema.json",
+  "context": {
+    "$id": "LGA_GuardianPolicyManager_KillSwitch",
+    "contract": {
+      "abi": [
+        {
+          "name": "killSwitch",
+          "type": "function",
+          "stateMutability": "nonpayable",
+          "inputs": [],
+          "outputs": []
+        }
+      ],
+      "deployments": [
+        {
+          "chainId": 8453,
+          "address": "0x53C25a50B2f40EF8bFD3d673ec667cCB912af103"
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "owner": "Ledger Guardian Agent",
+    "info": {
+      "legalName": "LGA Guardian Kill Switch",
+      "url": "https://github.com/your-org/ledger-guardian-agent",
+      "deploymentDate": "2026-09-04"
+    }
+  },
+  "display": {
+    "formats": {
+      "killSwitch()": {
+        "intent": "Emergency Kill Switch",
+        "interpolatedIntent": "Revoke ALL guardian policies and disable keeper access for this wallet",
+        "fields": [],
+        "required": []
+      }
+    }
+  }
+}
