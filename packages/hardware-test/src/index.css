@@ -1,0 +1,44 @@
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  line-height: 1.5;
+  background: #0b0f14;
+  color: #e8edf5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid #2a3444;
+  background: #141b24;
+  color: inherit;
+  padding: 10px 16px;
+}
+
+button:hover:not(:disabled) {
+  background: #1b2430;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: #1d4ed8;
+  border-color: #2563eb;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #2563eb;
+}
