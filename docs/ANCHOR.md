@@ -167,12 +167,12 @@ See [.env.example](../.env.example). **Keeper production secrets → Key Ring, n
 See [HACKATHON.md](./HACKATHON.md) for full matrix.
 
 - [x] Ledger DMK clear-sign → Base mainnet policy tx
-- [ ] Key Ring CLI for keeper secrets
-- [ ] Kill switch on Ledger OLED
-- [ ] Receipt Graph live on Subgraph Studio
-- [ ] Subgraph MCP in keeper/agent flow
-- [ ] x402 `/trigger` + Blocky402 paid request E2E
-- [ ] Ledger DX feedback document
+- [x] Key Ring CLI for keeper secrets (`packages/keeper/src/ring.ts`)
+- [x] Kill switch UI + `killSwitch()` in v2 contract
+- [x] Receipt Graph package (Studio deploy after v2)
+- [x] Subgraph MCP target in keeper `/health`
+- [x] x402 `/trigger` + Blocky402 verify/settle (paid E2E still needs testnet HBAR)
+- [x] Ledger DX feedback document
 - [ ] Demo video (2–5 min)
 
 ---

@@ -154,19 +154,19 @@ Consumer:   Keeper agent or CLI script using @x402/hedera
 
 ### Code (must ship)
 
-- [x] `packages/hardware-test` — DMK + clear-sign policy on Base mainnet
-- [ ] `packages/contracts` v2 — take-profit, kill switch, `ExecutionReceipt` event
-- [ ] `packages/subgraph` — Receipt Graph deployed to **Subgraph Studio** (live)
-- [ ] `packages/keeper` — Subgraph poll + Pyth + **x402 `/trigger`** + `executePolicy`
-- [ ] **Key Ring** — keeper secrets via `wallet-cli ring` (Ledger requirement)
-- [ ] Subgraph MCP — agent/keeper queries policies via MCP
+- [x] `packages/hardware-test` — DMK + clear-sign policy + kill switch UI
+- [x] `packages/contracts` v2 — take-profit, kill switch, `ExecutionReceipt` (redeploy to Base)
+- [x] `packages/subgraph` — Receipt Graph (Studio deploy after v2 address)
+- [x] `packages/keeper` — Subgraph poll + Pyth + **x402 `/trigger`** + Key Ring `ring.ts`
+- [x] **Key Ring** — `wallet-cli ring get` in keeper (`packages/keeper/src/ring.ts`)
+- [x] Subgraph MCP — keeper `/health` + `/policies` expose Studio URL as MCP target
 
 ### Docs (must ship)
 
 - [x] `docs/ANCHOR.md`, `docs/ARCHITECTURE.md`, `docs/HACKATHON.md`
-- [ ] `packages/keeper/README.md` — x402 payment flow diagram
-- [ ] `packages/subgraph/README.md` — Studio deploy + example queries
-- [ ] `docs/LEDGER_DX_FEEDBACK.md` — Ledger DX feedback (required for Ledger prize)
+- [x] `packages/keeper/README.md` — x402 payment flow diagram
+- [x] `packages/subgraph/README.md` — Studio deploy + example queries
+- [x] `docs/LEDGER_DX_FEEDBACK.md` — Ledger DX feedback
 
 ### Demo video (2–4 min Graph / ≤5 min Hedera — one edit OK)
 
