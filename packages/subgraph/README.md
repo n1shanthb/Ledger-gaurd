@@ -22,11 +22,16 @@ npx graph build
 ## Deploy to Subgraph Studio
 
 ```bash
-npx graph auth --studio $GRAPH_DEPLOY_KEY
-npx graph deploy --studio ledger-guardian-agent
+npx graph auth $GRAPH_DEPLOY_KEY
+npx graph deploy ledger-guardian-agent \
+  --node https://api.studio.thegraph.com/deploy/ \
+  --ipfs https://api.thegraph.com/ipfs/api/v0 \
+  --version-label v0.0.1
 ```
 
-After sync, set `SUBGRAPH_QUERY_URL` in repo `.env` / Key Ring. **Do not mock this URL.**
+**Live (v0.0.1):** [Studio](https://thegraph.com/studio/subgraph/ledger-guardian-agent) · Query `https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.1`
+
+After sync, set `SUBGRAPH_QUERY_URL` in Key Ring (`npm run ring:enroll`). **Do not mock this URL.**
 
 ## Example queries (keeper)
 

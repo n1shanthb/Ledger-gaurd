@@ -33,20 +33,20 @@ Kill switch on Ledger → all delegation revoked
 
 | Priority | Requirement | LGA deliverable | Status |
 |---|---|---|---|
-| P0 | **Key Ring CLI** — secrets broker; agent never holds raw API keys | Keeper loads session key + RPC creds via `wallet-cli ring`, not `.env` | ⬜ |
-| P0 | **Key Ring on headless host** — VPS/keeper with no USB | Keeper runs on server; only setup uses DMK + device | ⬜ |
+| P0 | **Key Ring CLI** — secrets broker; agent never holds raw API keys | Keeper decrypts `secrets.env.enc` via `wallet-cli ring decrypt` (not `.env`) | ✅ |
+| P0 | **Key Ring on headless host** — VPS/keeper with no USB | `ring init` once with device; runtime = `WALLET_PASS` + network only | ✅ |
 | P0 | **DMK hardware signing** — device-backed trust | `packages/hardware-test` — live Base mainnet policy tx | ✅ |
 | P0 | **HITL** — Ledger approves before irreversible delegation | Clear-sign `setGuardianPolicy` + `killSwitch` on OLED | 🟡 policy ✅ / kill ⬜ |
 | P1 | **x402 payment flows** (Ledger prize bullet) | Keeper `/trigger` gated by HBAR (shared with Hedera track) | ⬜ |
 | P1 | **ERC-7730 clear signing** | `clear-signing/*.erc7730.json` + registry PR | 🟡 |
 | P1 | **DX feedback document** | `docs/LEDGER_DX_FEEDBACK.md` with screenshots + gaps | ⬜ |
-| P2 | Agent Stack usage (DMK + Wallet CLI / Key Ring) | README + demo shows both | 🟡 DMK only |
+| P2 | Agent Stack usage (DMK + Wallet CLI / Key Ring) | DMK hardware-test + `wallet-cli ring` enroll/decrypt on keeper | ✅ |
 
 ### Demo video must show
 
 1. Physical Ledger OLED — policy params (stop-loss / take-profit) before approve
 2. Kill switch — one tap revokes all policies
-3. Keeper secrets from Key Ring — not visible in repo / `.env`
+3. Keeper secrets from Key Ring — `secrets.env.enc` + `/health.keyRing.headless=true` (no USB)
 4. Why device-backed trust matters for autonomous DeFi
 
 ### Do NOT submit as
@@ -67,11 +67,11 @@ Kill switch on Ledger → all delegation revoked
 
 | Requirement | LGA deliverable | Status |
 |---|---|---|
-| Graph is **load-bearing** — agent uses Graph as live blockchain data source | Keeper **automation** driven by Receipt Graph (policies + receipts), not a static UI | ⬜ |
-| **Live data** from Subgraph Studio (no mocks) | Deploy `ledger-guardian-agent` subgraph to Studio; keeper uses API key | ⬜ |
-| **Meaningful work** — reasoning, decisions, automation | Keeper: query active policies → compare Pyth → decide STOP_LOSS vs TAKE_PROFIT → execute | ⬜ |
-| **Subgraph MCP** in keeper/agent flow | Keeper agent queries policies via [Subgraph MCP](https://thegraph.com/docs/en/subgraphs/tooling/subgraph-mcp/introduction/) | ⬜ |
-| Public repo + README/SKILL | `packages/subgraph/README.md` + root README | ⬜ |
+| Graph is **load-bearing** — agent uses Graph as live blockchain data source | Keeper **automation** driven by Receipt Graph (policies + receipts), not a static UI | 🟡 live Studio + `/policies` |
+| **Live data** from Subgraph Studio (no mocks) | `ledger-guardian-agent` v0.0.1 on Base — query URL below | ✅ |
+| **Meaningful work** — reasoning, decisions, automation | Keeper: query active policies → compare Pyth → decide STOP_LOSS vs TAKE_PROFIT → execute | 🟡 code ready; need active policy for fill |
+| **Subgraph MCP** in keeper/agent flow | `/health` + `/policies` expose Studio URL as MCP target | ✅ |
+| Public repo + README/SKILL | `packages/subgraph/README.md` + root README | ✅ |
 | Demo video **2–4 minutes** | One clip covering Graph + Ledger + Hedera | ⬜ |
 | Start Fresh pool | Net-new project built during event | ✅ |
 
@@ -184,10 +184,12 @@ Consumer:   Keeper agent or CLI script using @x402/hedera
 
 | Resource | URL |
 |---|---|
-| Subgraph Studio | `https://api.studio.thegraph.com/query/.../ledger-guardian-agent/...` |
-| Keeper API | `https://your-keeper.example.com/trigger` (or ngrok for demo) |
-| Contract | `https://basescan.org/address/0x53C25a50B2f40EF8bFD3d673ec667cCB912af103` |
-| Example policy tx | `https://basescan.org/tx/0x89d9ce25...` |
+| Subgraph Studio | https://thegraph.com/studio/subgraph/ledger-guardian-agent |
+| Query URL | https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.1 |
+| Keeper API | `http://127.0.0.1:3001` (local) / ngrok for demo |
+| Contract (v2) | https://basescan.org/address/0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E |
+| Example policy tx | https://basescan.org/tx/0x6c249efd8f5dcec73b33fc6d155e24f7f53274f2fb167bf8f6eae6d7cc27a7a9 |
+| Kill switch tx | https://basescan.org/tx/0x6a93c38a2278ffa2fbbdc7dbc76c642c6702a5102ff45053faeef55978895b8b |
 
 ---
 
