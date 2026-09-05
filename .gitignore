@@ -20,5 +20,8 @@ packages/contracts/.env
 
 packages/hardware-test/.env
 
+packages/keeper/secrets.env
+packages/keeper/.env
+
 local/
 
