@@ -49,6 +49,11 @@
         "name": "Coinbase Wrapped Staked ETH",
         "ticker": "cbETH",
         "decimals": 18
+      },
+      "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf": {
+        "name": "Coinbase Wrapped BTC",
+        "ticker": "cbBTC",
+        "decimals": 8
       }
     }
   },

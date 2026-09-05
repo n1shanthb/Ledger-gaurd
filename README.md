@@ -50,6 +50,9 @@ npx skills add hedera-dev/hedera-skills
 # Hardware demo (works today)
 cd packages/hardware-test && npm install && npm run dev
 
+# Protocol frontend
+cd packages/web && npm install && npm run dev
+
 # Full stack (build during hackathon)
 cd packages/subgraph && graph deploy --studio ledger-guardian-agent
 cd packages/keeper && pnpm start   # x402 /trigger
@@ -62,6 +65,7 @@ cd packages/keeper && pnpm start   # x402 /trigger
 ```
 ledgergaurd/
 ├── packages/
+│   ├── web/             Series A protocol frontend (Next.js)
 │   ├── hardware-test/   Ledger DMK demo (live)
 │   ├── contracts/       GuardianPolicyManager + v2 roadmap
 │   ├── subgraph/        Receipt Graph → Subgraph Studio

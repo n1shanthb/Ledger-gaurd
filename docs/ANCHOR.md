@@ -110,6 +110,7 @@ Base execution and Hedera payment are **independent systems** linked by the keep
 
 ```
 packages/
+├── web/              Series A protocol frontend (Next.js)
 ├── hardware-test/    DMK + Ledger clear-sign (live Base mainnet)
 ├── contracts/        GuardianPolicyManager, SessionKeyValidator, SwapExecutor
 ├── subgraph/         Receipt Graph → Subgraph Studio (Base)
