@@ -5,7 +5,6 @@ import {
   parseEther,
   serializeTransaction,
   type Address,
-  type Hex,
   type TransactionSerializableEIP1559,
 } from "viem";
 import { base } from "viem/chains";

@@ -266,7 +266,7 @@ export function LedgerConsole() {
     );
   }, [pushLog]);
 
-  const useInstantFillPreset = useCallback(() => {
+  const applyInstantFill = useCallback(() => {
     const spot = holdings.find((h) => h.id === "eth" || h.id === "weth")?.spotUsd ?? null;
     const ethH = holdings.find((h) => h.id === "eth");
     const wethH = holdings.find((h) => h.id === "weth");
@@ -368,7 +368,7 @@ export function LedgerConsole() {
     }
   }, [conn, contractAddress, form, accountIndex, ensureAddress, pushLog, loadHoldings]);
 
-  const usePythBand = useCallback(async () => {
+  const applyPythBand = useCallback(async () => {
     setSubmitting(true);
     try {
       const band = await fetchPythBand("eth");
@@ -660,14 +660,14 @@ export function LedgerConsole() {
             <button
               type="button"
               disabled={submitting}
-              onClick={() => void usePythBand()}
+              onClick={() => void applyPythBand()}
               className="rounded-full bg-signal px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
             >
               Pyth ±$1 (stop −1 / take +1)
             </button>
             <button
               type="button"
-              onClick={useInstantFillPreset}
+              onClick={applyInstantFill}
               className="rounded-full border border-mist px-4 py-2 text-sm text-paper"
             >
               Instant-fill (stop above spot)
