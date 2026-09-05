@@ -17,28 +17,30 @@ Open **http://localhost:5173** in **Chrome or Edge**.
 
 | Tab | Purpose |
 |---|---|
-| **Set Policy** | Clear-sign `setGuardianPolicy()` → broadcast to Base |
+| **Set Policy** | Clear-sign `setGuardianPolicy()` (v2: type + stop + take-profit) → Base |
+| **Kill Switch** | Clear-sign `killSwitch()` — revokes all policies + session keys |
 | **Hello Test** | Message signing sanity check (no on-chain tx) |
 
-## Account safety
-
-- Default: **Account 2** (`m/44'/60'/0'/0/1`) — use a test account, not main holdings
-- Fund Account 2 with ~$2–5 Base ETH for gas only
-
-## Policy fields (v2 UI roadmap)
+## Policy fields
 
 | Field | Purpose |
 |---|---|
 | Policy type | Stop-loss / Take-profit / LP stop-loss |
 | Stop-loss floor | Sell when price ≤ this (Pyth 1e8 USD) |
-| Take-profit target | Sell at this rate for profit (price ≥ target) |
+| Take-profit target | Sell when price ≥ this |
 | Max amount / slippage | Bounded execution caps |
 
-**v1 contract (live):** stop-loss only — 4-param `setGuardianPolicy`.
+**v1 contract (live):** 4-param stop-loss only @ `0x53C25a50B2f40EF8bFD3d673ec667cCB912af103`.  
+**v2:** deploy via `packages/contracts` then paste the new address here.
 
-## Kill switch (planned)
+## Kill switch
 
-Dedicated UI button → clear-sign `killSwitch()` on Ledger → revokes all policies.
+Dedicated tab → OLED “Revoke ALL guardian policies and disable keeper access” → `killSwitch()`.
+
+## Account safety
+
+- Default: **Account 2** (`m/44'/60'/0'/0/1`) — use a test account, not main holdings
+- Fund Account 2 with ~$2–5 Base ETH for gas only
 
 ## Env
 
