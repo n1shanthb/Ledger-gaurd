@@ -289,23 +289,26 @@ contract GuardianPolicyManager {
         return uint256(scaled) / (10 ** uint256(-e));
     }
 
-    /// @dev 18-dec token → USDC (6) or USDC → WETH (18). Pyth usd is 1e8.
+    /// @dev token → USDC (6) or USDC → WETH (18). Pyth usd is 1e8.
     function _expectedOut(address tokenIn, uint256 amountIn, uint256 pythUsd1e8) internal view returns (uint256) {
         address usdc = executor.usdc();
+        uint8 dec = IERC20(tokenIn).decimals();
         if (tokenIn == usdc) {
+            // USDC → WETH (18): amountIn * 1e(18+8) / pyth / 1e6
             return amountIn * 1e20 / pythUsd1e8;
         }
-        return amountIn * pythUsd1e8 / 1e20;
+        // amountIn * usd1e8 / 10^(dec+2) → USDC 6 decimals
+        return amountIn * pythUsd1e8 / (10 ** (uint256(dec) + 2));
     }
 
     function _fillPriceUsd1e8(address tokenIn, uint256 amountIn, uint256 amountOut) internal view returns (uint256) {
         address usdc = executor.usdc();
         if (tokenIn == usdc) {
-            // amountIn USDC 1e6, amountOut WETH 1e18 → usd per eth
             if (amountOut == 0) return 0;
             return amountIn * 1e20 / amountOut;
         }
         if (amountIn == 0) return 0;
-        return amountOut * 1e20 / amountIn;
+        uint8 dec = IERC20(tokenIn).decimals();
+        return amountOut * (10 ** (uint256(dec) + 2)) / amountIn;
     }
 }
