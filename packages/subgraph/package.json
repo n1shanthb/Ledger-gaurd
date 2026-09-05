@@ -1,0 +1,13 @@
+{
+  "name": "@lga/subgraph",
+  "private": true,
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy": "graph deploy --studio ledger-guardian-agent"
+  },
+  "devDependencies": {
+    "@graphprotocol/graph-cli": "^0.97.0",
+    "@graphprotocol/graph-ts": "^0.37.0"
+  }
+}
