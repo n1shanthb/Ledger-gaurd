@@ -2,12 +2,18 @@ const HERMES = process.env.PYTH_PRICE_SERVICE_URL ?? "https://hermes.pyth.networ
 
 export const ETH_USD =
   "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace";
+export const BTC_USD =
+  "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43";
 export const USDC_USD =
   "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a";
 
+const CBBTC = "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf";
+const USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
+
 export function feedForToken(token: string): string {
   const t = token.toLowerCase();
-  if (t === "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913") return USDC_USD;
+  if (t === USDC) return USDC_USD;
+  if (t === CBBTC) return BTC_USD;
   return ETH_USD;
 }
 

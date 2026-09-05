@@ -19,6 +19,7 @@ export async function fetchActivePolicies(
   url: string,
   apiKey?: string,
 ): Promise<PolicyRow[]> {
+  if (!url) return [];
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
