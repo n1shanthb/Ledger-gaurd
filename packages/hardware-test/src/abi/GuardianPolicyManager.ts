@@ -5,10 +5,19 @@ export const guardianPolicyManagerAbi = [
     stateMutability: "nonpayable",
     inputs: [
       { name: "token", type: "address" },
+      { name: "policyType", type: "uint8" },
       { name: "stopLossPrice", type: "uint256" },
+      { name: "takeProfitPrice", type: "uint256" },
       { name: "maxAmount", type: "uint256" },
       { name: "maxSlippageBps", type: "uint256" },
     ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "killSwitch",
+    stateMutability: "nonpayable",
+    inputs: [],
     outputs: [],
   },
   {
@@ -18,9 +27,20 @@ export const guardianPolicyManagerAbi = [
       { name: "policyId", type: "bytes32", indexed: true },
       { name: "owner", type: "address", indexed: true },
       { name: "token", type: "address", indexed: true },
+      { name: "policyType", type: "uint8", indexed: false },
       { name: "stopLossPrice", type: "uint256", indexed: false },
+      { name: "takeProfitPrice", type: "uint256", indexed: false },
       { name: "maxAmount", type: "uint256", indexed: false },
       { name: "maxSlippageBps", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "KillSwitchActivated",
+    inputs: [
+      { name: "owner", type: "address", indexed: true },
+      { name: "policiesRevoked", type: "uint256", indexed: false },
+      { name: "timestamp", type: "uint256", indexed: false },
     ],
   },
 ] as const;

@@ -25,7 +25,9 @@ import {
 
 export type PolicyFormValues = {
   token: Address;
+  policyType: 0 | 1 | 2;
   stopLossUsd: string;
+  takeProfitUsd: string;
   maxAmount: string;
   maxAmountUnit: "eth" | "token";
   maxSlippagePercent: string;
@@ -40,7 +42,7 @@ function getRpcUrl(): string {
   return import.meta.env.VITE_BASE_RPC_URL ?? "https://mainnet.base.org";
 }
 
-function getPublicClient() {
+export function getPublicClient() {
   return createPublicClient({
     chain: base,
     transport: http(getRpcUrl()),
@@ -48,7 +50,10 @@ function getPublicClient() {
 }
 
 export function parsePolicyParams(form: PolicyFormValues) {
-  const stopLossPrice = parseUnits(form.stopLossUsd, 8);
+  const stopLossPrice =
+    form.policyType === 1 ? 0n : parseUnits(form.stopLossUsd || "0", 8);
+  const takeProfitPrice =
+    form.policyType === 0 ? 0n : parseUnits(form.takeProfitUsd || "0", 8);
   const maxAmount =
     form.maxAmountUnit === "eth"
       ? parseEther(form.maxAmount)
@@ -56,10 +61,10 @@ export function parsePolicyParams(form: PolicyFormValues) {
   const maxSlippageBps = BigInt(
     Math.round(parseFloat(form.maxSlippagePercent) * 100),
   );
-  return { stopLossPrice, maxAmount, maxSlippageBps };
+  return { stopLossPrice, takeProfitPrice, maxAmount, maxSlippageBps };
 }
 
-async function signTransactionOnLedger(
+export async function signTransactionOnLedger(
   sessionId: DeviceSessionId,
   tx: TransactionSerializableEIP1559,
   onLog: (entry: Omit<LogEntry, "id" | "ts">) => void,
@@ -86,7 +91,7 @@ async function signTransactionOnLedger(
               lastInteraction = interaction;
               onLog({
                 level: "info",
-                message: `Ledger waiting — ${interaction}. Review setGuardianPolicy on device.`,
+                message: `Ledger waiting — ${interaction}. Review on device.`,
               });
             }
             break;
@@ -150,17 +155,25 @@ export async function signAndSendSetGuardianPolicy(
   accountIndex = 0,
 ): Promise<PolicySignResult> {
   const client = getPublicClient();
-  const { stopLossPrice, maxAmount, maxSlippageBps } = parsePolicyParams(form);
+  const { stopLossPrice, takeProfitPrice, maxAmount, maxSlippageBps } =
+    parsePolicyParams(form);
 
   const data = encodeFunctionData({
     abi: guardianPolicyManagerAbi,
     functionName: "setGuardianPolicy",
-    args: [form.token, stopLossPrice, maxAmount, maxSlippageBps],
+    args: [
+      form.token,
+      form.policyType,
+      stopLossPrice,
+      takeProfitPrice,
+      maxAmount,
+      maxSlippageBps,
+    ],
   });
 
   onLog({
     level: "info",
-    message: `Encoding setGuardianPolicy(token=${form.token.slice(0, 10)}…, stop=${stopLossPrice}, max=${maxAmount}, slip=${maxSlippageBps} bps)`,
+    message: `Encoding setGuardianPolicy(type=${form.policyType}, token=${form.token.slice(0, 10)}…, stop=${stopLossPrice}, tp=${takeProfitPrice}, max=${maxAmount}, slip=${maxSlippageBps} bps)`,
   });
 
   const [nonce, fees] = await Promise.all([
