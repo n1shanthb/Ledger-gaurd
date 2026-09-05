@@ -23,7 +23,9 @@ export default function PolicyPanel({ conn, pushLog, accountIndex }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<PolicyFormValues>({
     token: BASE_TOKENS.WETH as Address,
+    policyType: 0,
     stopLossUsd: "2800",
+    takeProfitUsd: "4000",
     maxAmount: "0.1",
     maxAmountUnit: "eth",
     maxSlippagePercent: "0.5",
@@ -138,6 +140,22 @@ export default function PolicyPanel({ conn, pushLog, accountIndex }: Props) {
       </label>
 
       <label style={labelStyle}>
+        Policy type
+        <select
+          style={inputStyle}
+          value={form.policyType}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, policyType: Number(e.target.value) as 0 | 1 | 2 }))
+          }
+        >
+          <option value={0}>Stop-loss</option>
+          <option value={1}>Take-profit</option>
+          <option value={2}>LP stop-loss</option>
+        </select>
+      </label>
+
+      {form.policyType !== 1 && (
+      <label style={labelStyle}>
         Stop-loss trigger (USD, Pyth 1e8 scale)
         <input
           style={inputStyle}
@@ -145,6 +163,18 @@ export default function PolicyPanel({ conn, pushLog, accountIndex }: Props) {
           onChange={(e) => setForm((f) => ({ ...f, stopLossUsd: e.target.value }))}
         />
       </label>
+      )}
+
+      {form.policyType !== 0 && (
+      <label style={labelStyle}>
+        Take-profit target (USD)
+        <input
+          style={inputStyle}
+          value={form.takeProfitUsd}
+          onChange={(e) => setForm((f) => ({ ...f, takeProfitUsd: e.target.value }))}
+        />
+      </label>
+      )}
 
       <label style={labelStyle}>
         Max trade amount
