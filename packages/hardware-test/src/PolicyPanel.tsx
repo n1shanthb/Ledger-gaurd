@@ -131,9 +131,22 @@ export default function PolicyPanel({ conn, pushLog, accountIndex }: Props) {
         <select
           style={inputStyle}
           value={form.token}
-          onChange={(e) => setForm((f) => ({ ...f, token: e.target.value as Address }))}
+          onChange={(e) => {
+            const token = e.target.value as Address;
+            const isBtc =
+              token.toLowerCase() === BASE_TOKENS.CBBTC.toLowerCase();
+            setForm((f) => ({
+              ...f,
+              token,
+              maxAmountUnit: isBtc ? "token" : "eth",
+              maxAmount: isBtc ? "0.001" : f.maxAmount,
+              stopLossUsd: isBtc ? "90000" : f.stopLossUsd,
+              takeProfitUsd: isBtc ? "120000" : f.takeProfitUsd,
+            }));
+          }}
         >
-          <option value={BASE_TOKENS.WETH}>WETH</option>
+          <option value={BASE_TOKENS.WETH}>ETH (WETH)</option>
+          <option value={BASE_TOKENS.CBBTC}>BTC (cbBTC)</option>
           <option value={BASE_TOKENS.USDC}>USDC</option>
           <option value={BASE_TOKENS.cbETH}>cbETH</option>
         </select>
@@ -195,7 +208,11 @@ export default function PolicyPanel({ conn, pushLog, accountIndex }: Props) {
             }
           >
             <option value="eth">ETH</option>
-            <option value="token">Token</option>
+            <option value="token">
+              {form.token.toLowerCase() === BASE_TOKENS.CBBTC.toLowerCase()
+                ? "BTC"
+                : "Token"}
+            </option>
           </select>
         </Row>
       </label>

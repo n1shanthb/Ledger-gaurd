@@ -14,7 +14,11 @@ import {
   type TransactionSerializableEIP1559,
 } from "viem";
 import { base } from "viem/chains";
-import { guardianPolicyManagerAbi } from "./abi/GuardianPolicyManager";
+import {
+  BASE_TOKENS,
+  guardianPolicyManagerAbi,
+  tokenDecimals,
+} from "./abi/GuardianPolicyManager";
 import {
   derivationPathForAccount,
   formatLedgerError,
@@ -55,9 +59,10 @@ export function parsePolicyParams(form: PolicyFormValues) {
   const takeProfitPrice =
     form.policyType === 0 ? 0n : parseUnits(form.takeProfitUsd || "0", 8);
   const maxAmount =
-    form.maxAmountUnit === "eth"
+    form.maxAmountUnit === "eth" &&
+    form.token.toLowerCase() === BASE_TOKENS.WETH.toLowerCase()
       ? parseEther(form.maxAmount)
-      : parseUnits(form.maxAmount, 18);
+      : parseUnits(form.maxAmount, tokenDecimals(form.token));
   const maxSlippageBps = BigInt(
     Math.round(parseFloat(form.maxSlippagePercent) * 100),
   );
