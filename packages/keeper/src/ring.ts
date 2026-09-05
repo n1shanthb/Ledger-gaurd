@@ -178,6 +178,12 @@ export function loadSecrets(): KeeperSecrets {
     );
   }
 
+  // Pyth helpers read process.env — surface keys from ring/env bag
+  for (const k of ["PYTH_API_KEY", "PYTH_PRICE_SERVICE_URL", "BASE_RPC_URL"]) {
+    const v = bag[k] ?? process.env[k];
+    if (v) process.env[k] = v;
+  }
+
   const hederaNetwork =
     (bag.HEDERA_NETWORK ?? process.env.HEDERA_NETWORK) === "mainnet"
       ? "hedera:mainnet"
