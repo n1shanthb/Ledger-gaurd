@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import PolicyPanel from "./PolicyPanel";
+import KillSwitchPanel from "./KillSwitchPanel";
 import {
   connectLedger,
   disconnectLedger,
@@ -12,7 +13,7 @@ import {
   YES_NO_MESSAGE,
 } from "./ledger";
 
-type Tab = "hello" | "policy";
+type Tab = "hello" | "policy" | "kill";
 
 const ACCOUNT_OPTIONS = [
   { index: 0, label: "Account 1 (default — avoid if this holds main funds)" },
@@ -128,12 +129,15 @@ export default function App() {
     <main style={{ maxWidth: 720, margin: "0 auto", padding: 24 }}>
       <h1 style={{ marginTop: 0 }}>Ledger Guardian Agent</h1>
       <p style={{ color: "#94a3b8" }}>
-        Hardware test + ERC-7730 <code>setGuardianPolicy()</code> on Base.
+        Hardware test — ERC-7730 <code>setGuardianPolicy()</code> + <code>killSwitch()</code> on Base.
       </p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <TabButton active={tab === "policy"} onClick={() => setTab("policy")}>
           Set Policy
+        </TabButton>
+        <TabButton active={tab === "kill"} onClick={() => setTab("kill")}>
+          Kill Switch
         </TabButton>
         <TabButton active={tab === "hello"} onClick={() => setTab("hello")}>
           Hello Test
@@ -227,6 +231,8 @@ export default function App() {
 
       {tab === "policy" ? (
         <PolicyPanel conn={conn} pushLog={pushLog} accountIndex={accountIndex} />
+      ) : tab === "kill" ? (
+        <KillSwitchPanel conn={conn} pushLog={pushLog} accountIndex={accountIndex} />
       ) : (
         <section
           style={{
