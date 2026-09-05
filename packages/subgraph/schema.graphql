@@ -9,7 +9,7 @@ enum TriggerType {
   TAKE_PROFIT
 }
 
-type Policy @entity {
+type Policy @entity(immutable: false) {
   id: Bytes!
   owner: Bytes!
   token: Bytes!
@@ -24,7 +24,7 @@ type Policy @entity {
   revokedAt: BigInt
 }
 
-type ExecutionReceipt @entity {
+type ExecutionReceipt @entity(immutable: true) {
   id: Bytes!
   policy: Policy!
   owner: Bytes!
@@ -38,7 +38,7 @@ type ExecutionReceipt @entity {
   timestamp: BigInt!
 }
 
-type KillSwitch @entity {
+type KillSwitch @entity(immutable: true) {
   id: Bytes!
   owner: Bytes!
   policiesRevoked: BigInt!

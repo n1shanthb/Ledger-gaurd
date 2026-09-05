@@ -4,7 +4,7 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --studio ledger-guardian-agent"
+    "deploy": "graph deploy ledger-guardian-agent --node https://api.studio.thegraph.com/deploy/ --ipfs https://api.thegraph.com/ipfs/api/v0"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.97.0",
