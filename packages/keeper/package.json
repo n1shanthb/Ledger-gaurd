@@ -4,9 +4,17 @@
   "type": "module",
   "scripts": {
     "start": "node --import tsx src/index.ts",
-    "dev": "node --import tsx --watch src/index.ts"
+    "start:env": "node --env-file=.env --import tsx src/index.ts",
+    "dev": "node --import tsx --watch src/index.ts",
+    "ring:enroll": "node --import tsx src/enroll.ts",
+    "complete-account": "node --import tsx src/completeAccount.ts",
+    "pay": "node --import tsx src/pay.ts"
   },
   "dependencies": {
+    "@x402/core": "^2.25.0",
+    "@x402/express": "^2.25.0",
+    "@x402/fetch": "^2.25.0",
+    "@x402/hedera": "^2.25.0",
     "express": "^5.1.0",
     "viem": "^2.37.5"
   },
