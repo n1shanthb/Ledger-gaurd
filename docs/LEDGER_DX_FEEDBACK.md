@@ -16,7 +16,7 @@
 | DMK documentation | 4 | Connect + session model is enough to ship a Vite demo |
 | DMK WebHID integration | 4 | Chrome picker works; HID unplug events are reliable |
 | Ethereum signer kit | 4 | `signTransaction` + `signMessage` both usable from one builder |
-| Key Ring CLI | 3 | `wallet-cli ring get/set` is the right shape; Windows PATH + enroll UX is thin |
+| Key Ring CLI | 4 | Real LKRP encrypt/decrypt path; Windows PATH still thin |
 | ERC-7730 / clear signing | 3 | Descriptor JSON is clear; OLED stays raw until registry PR merges |
 | Agent skills | 3 | Good pointers, still have to assemble DMK + viem yourself |
 | Overall DX | 4 | Physical device path is real; Key Ring on a headless keeper is the missing polished piece |
@@ -87,4 +87,4 @@
 - Base mainnet tx: https://basescan.org/tx/0x89d9ce25007ed4ab4d2b5a0ed39a183c8dba2bd0b23e999059fcf0323098746b
 - Contract v1: `0x53C25a50B2f40EF8bFD3d673ec667cCB912af103`
 - Hardware: Physical Ledger, Account 2 (`m/44'/60'/0'/0/1`)
-- Key Ring: keeper loads `KEEPER_SESSION_KEY`, `BASE_RPC_URL`, `SUBGRAPH_QUERY_URL` via `wallet-cli ring get`
+- Key Ring: keeper decrypts `secrets.env.enc` via `wallet-cli ring decrypt --key lga-keeper` (no `ring get` — official API is encrypt/decrypt)

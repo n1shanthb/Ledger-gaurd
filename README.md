@@ -2,17 +2,6 @@
 
 > Hardware-bounded DeFi exits — Ledger clear-sign · Receipt Graph · x402 keeper · Key Ring secrets.
 
-**One demo, three sponsor tracks:** [ETHOnline 2026](https://ethglobal.com/events/ethonline2026) · Start from Scratch.
-
-| Track | Pool | Our hook |
-|---|---|---|
-| **Ledger** | $3,500 | DMK HITL + Key Ring + kill switch |
-| **The Graph** | $5,000 | Receipt Graph + Subgraph MCP + keeper automation |
-| **Hedera** | $6,000 | x402-gated `/trigger` via Blocky402 |
-
-**Submission checklist:** [docs/HACKATHON.md](./docs/HACKATHON.md)
-
----
 
 ## What It Does
 

@@ -260,13 +260,13 @@ Agent prompt: "Which active policies have stop-loss below current ETH price?"
 #### Key Ring (Ledger track)
 
 ```bash
-# One-time setup (user + Ledger device)
-wallet-cli ring init
-wallet-cli ring set KEEPER_SESSION_KEY --from-ledger   # scoped secret
-wallet-cli ring set BASE_RPC_URL ...
+wallet-cli ring init --name lga-keeper-host   # USB once
+# fill secrets.env from secrets.env.example
+WALLET_PASS=… npm run ring:enroll            # → secrets.env.enc
+# headless: WALLET_PASS=… npm start           # decrypt, no USB
 ```
 
-Keeper process reads secrets from ring at runtime — **no secrets in git or `.env`**.
+Keeper decrypts `secrets.env.enc` at runtime — **no secrets in git or plaintext `.env`**.
 
 #### x402 service (Hedera track — hosted service)
 
