@@ -89,12 +89,37 @@ Get API key: [basescan.org/myapikey](https://basescan.org/myapikey)
 
 Wire this into `packages/hardware-test/.env` and `clear-signing/*.erc7730.json` (already done in repo).
 
-## v2 Roadmap
+## v2 live on Base (Foundry)
 
-| Feature | Target |
+| Contract | Address |
 |---|---|
-| Take-profit (`takeProfitPrice`) | v2 contract redeploy |
-| LP stop-loss (`PolicyType.LP_STOP_LOSS`) | v2 contract |
-| Kill switch (`killSwitch()`) | v2 contract + `kill_switch.erc7730.json` |
-| Receipt Graph (`ExecutionReceipt` events) | `packages/subgraph` |
-| x402 keeper `/trigger` | `packages/keeper` |
+| **GuardianPolicyManager** | [`0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E`](https://basescan.org/address/0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E) |
+| SwapExecutor | [`0x4767a9Deee297d73B72cDD850850D11B221034Ab`](https://basescan.org/address/0x4767a9Deee297d73B72cDD850850D11B221034Ab) |
+| SessionKeyValidator | [`0xA7b4aB91e4792c831F49Bb915171AEDaB507bc39`](https://basescan.org/address/0xA7b4aB91e4792c831F49Bb915171AEDaB507bc39) |
+| GPM tx | [`0xa82233f7…`](https://basescan.org/tx/0xa82233f7d74b101d262e1ba0dc7975bca2bfce7db773d20dc645cf8a48410b34) |
+| startBlock | `50868775` |
+| Deployer | `0x6304aC44968A032693afe8ddBB74e3Dd05D3692B` |
+
+## v2 (code ready — redeploy)
+
+v2 deploys **three** contracts: `SwapExecutor`, `GuardianPolicyManager`, `SessionKeyValidator`.
+
+```powershell
+forge script script/Deploy.s.sol:Deploy --rpc-url $env:BASE_RPC_URL --broadcast -vvvv
+```
+
+Copy the new GPM address into:
+
+- `packages/hardware-test/.env` → `VITE_GUARDIAN_POLICY_MANAGER_ADDRESS`
+- `clear-signing/*.erc7730.json` deployments
+- `packages/subgraph/subgraph.yaml` address + startBlock
+- `.env` → `GUARDIAN_POLICY_MANAGER_ADDRESS`
+
+| Feature | Status |
+|---|---|
+| Take-profit | v2 `setGuardianPolicy` 6-param |
+| Kill switch | `killSwitch()` + ERC-7730 |
+| ExecutionReceipt | emitted on `executePolicy` |
+| Session keys | `SessionKeyValidator.setSessionKey` |
+
+v1 remains live at `0x53C25a50B2f40EF8bFD3d673ec667cCB912af103` (4-param stop-loss only). Hardware test can point at either address until v2 is broadcast.

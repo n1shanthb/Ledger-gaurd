@@ -8,11 +8,12 @@ Foundry package for `GuardianPolicyManager` — policy registry, kill switch, ex
 
 | Feature | Contract function | Status |
 |---|---|---|
-| Stop-loss exit | `setGuardianPolicy` (stopLossPrice) | **Live** on v1 deploy |
-| Take-profit exit | `setGuardianPolicy` (takeProfitPrice) | Planned v2 |
-| LP stop-loss | `PolicyType.LP_STOP_LOSS` | Planned v2 |
-| Kill switch | `killSwitch()` | Planned v2 |
-| Compliance receipt | `ExecutionReceipt` event | Planned v2 |
+| Stop-loss exit | `setGuardianPolicy` (stopLossPrice) | **v2** |
+| Take-profit exit | `setGuardianPolicy` (takeProfitPrice) | **v2** |
+| LP stop-loss | `PolicyType.LP_STOP_LOSS` | **v2** |
+| Kill switch | `killSwitch()` | **v2** |
+| Compliance receipt | `ExecutionReceipt` event | **v2** |
+| Pyth execute | `executePolicy(policyId, vaas)` | **v2** |
 
 ## Live Deploy (v1)
 
