@@ -1,0 +1,46 @@
+enum PolicyType {
+  STOP_LOSS
+  TAKE_PROFIT
+  LP_STOP_LOSS
+}
+
+enum TriggerType {
+  STOP_LOSS
+  TAKE_PROFIT
+}
+
+type Policy @entity {
+  id: Bytes!
+  owner: Bytes!
+  token: Bytes!
+  policyType: PolicyType!
+  stopLossPrice: BigInt!
+  takeProfitPrice: BigInt!
+  maxAmount: BigInt!
+  maxSlippageBps: BigInt!
+  active: Boolean!
+  receipts: [ExecutionReceipt!]! @derivedFrom(field: "policy")
+  createdAt: BigInt!
+  revokedAt: BigInt
+}
+
+type ExecutionReceipt @entity {
+  id: Bytes!
+  policy: Policy!
+  owner: Bytes!
+  triggerType: TriggerType!
+  pythPrice: BigInt!
+  executionPrice: BigInt!
+  maxSlippageBps: BigInt!
+  actualSlippageBps: BigInt!
+  compliant: Boolean!
+  txHash: Bytes!
+  timestamp: BigInt!
+}
+
+type KillSwitch @entity {
+  id: Bytes!
+  owner: Bytes!
+  policiesRevoked: BigInt!
+  timestamp: BigInt!
+}

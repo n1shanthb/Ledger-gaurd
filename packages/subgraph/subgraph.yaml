@@ -1,0 +1,32 @@
+specVersion: 1.0.0
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: GuardianPolicyManager
+    network: base
+    source:
+      address: "0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E"
+      abi: GuardianPolicyManager
+      startBlock: 50868775
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Policy
+        - ExecutionReceipt
+        - KillSwitch
+      abis:
+        - name: GuardianPolicyManager
+          file: ./abis/GuardianPolicyManager.json
+      eventHandlers:
+        - event: PolicyCreated(indexed bytes32,indexed address,indexed address,uint8,uint256,uint256,uint256,uint256)
+          handler: handlePolicyCreated
+        - event: PolicyRevoked(indexed bytes32,indexed address)
+          handler: handlePolicyRevoked
+        - event: ExecutionReceipt(indexed bytes32,indexed address,indexed bytes32,uint8,uint256,uint256,uint256,uint256,bool)
+          handler: handleExecutionReceipt
+        - event: KillSwitchActivated(indexed address,uint256,uint256)
+          handler: handleKillSwitchActivated
+      file: ./src/mapping.ts
