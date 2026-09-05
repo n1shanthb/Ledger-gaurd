@@ -1,53 +1,37 @@
-import type { Request, Response, NextFunction } from "express";
+import { paymentMiddleware } from "@x402/express";
+import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
+import { ExactHederaScheme } from "@x402/hedera/exact/server";
 
-export type PaymentReq = {
-  network: string;
-  amount: string;
+const HBAR_PRICE = { asset: "0.0.0", amount: "100000" }; // 0.001 HBAR
+
+export function keeperX402(opts: {
   facilitator: string;
-};
+  payTo: string;
+  amount?: string;
+  network: "hedera:mainnet" | "hedera:testnet";
+}) {
+  const facilitator = new HTTPFacilitatorClient({ url: opts.facilitator });
+  const server = new x402ResourceServer(facilitator).register(
+    "hedera:*",
+    new ExactHederaScheme({}),
+  );
 
-export function x402Gate(reqSpec: PaymentReq) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    const header = (req.header("X-PAYMENT") ?? req.header("PAYMENT-SIGNATURE") ?? "").trim();
-    if (!header) {
-      res.status(402).json({
-        x402Version: 1,
-        error: "Payment Required",
-        paymentRequirements: {
-          network: reqSpec.network,
-          amount: reqSpec.amount,
-          asset: "HBAR",
-          description: "LGA keeper trigger attempt",
-          facilitator: reqSpec.facilitator,
-        },
-      });
-      return;
-    }
-
-    try {
-      const verify = await fetch(`${reqSpec.facilitator.replace(/\/$/, "")}/verify`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ paymentHeader: header, paymentRequirements: reqSpec }),
-      });
-      if (!verify.ok) {
-        res.status(402).json({ error: "x402 verify failed", status: verify.status });
-        return;
-      }
-      const settle = await fetch(`${reqSpec.facilitator.replace(/\/$/, "")}/settle`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ paymentHeader: header, paymentRequirements: reqSpec }),
-      });
-      if (!settle.ok) {
-        res.status(402).json({ error: "x402 settle failed", status: settle.status });
-        return;
-      }
-      const body = (await settle.json().catch(() => ({}))) as { txHash?: string };
-      (req as Request & { x402Tx?: string }).x402Tx = body.txHash;
-      next();
-    } catch (err) {
-      res.status(502).json({ error: String(err) });
-    }
-  };
+  const amount = opts.amount ?? HBAR_PRICE.amount;
+  return paymentMiddleware(
+    {
+      "POST /trigger": {
+        accepts: [
+          {
+            scheme: "exact",
+            price: { asset: "0.0.0", amount },
+            network: opts.network,
+            payTo: opts.payTo,
+          },
+        ],
+        description: "LGA keeper trigger attempt",
+        mimeType: "application/json",
+      },
+    },
+    server,
+  );
 }
