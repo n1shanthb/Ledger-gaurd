@@ -1,0 +1,9 @@
+# Keep image small; never bake plaintext secrets
+node_modules
+.env
+.env.*
+secrets.env
+*.log
+dist
+.git
+README.md
