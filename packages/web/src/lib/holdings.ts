@@ -1,6 +1,8 @@
 import {
   createPublicClient,
+  fallback,
   formatEther,
+  formatUnits,
   http,
   parseAbi,
   type Address,
@@ -76,20 +78,31 @@ export const TRACKED_ASSETS: TrackedAsset[] = [
   },
 ];
 
-function rpc() {
-  return process.env.NEXT_PUBLIC_BASE_RPC_URL ?? "https://mainnet.base.org";
+function rpcUrls(): string[] {
+  const primary = process.env.NEXT_PUBLIC_BASE_RPC_URL;
+  const list = [
+    primary,
+    "https://base.publicnode.com",
+    "https://mainnet.base.org",
+  ].filter((u): u is string => Boolean(u));
+  return [...new Set(list)];
 }
 
 export function getPublicClient() {
+  const urls = rpcUrls();
   return createPublicClient({
     chain: base,
-    transport: http(rpc(), { timeout: 20_000 }),
+    transport: fallback(
+      urls.map((url) => http(url, { timeout: 25_000, retryCount: 1 })),
+    ),
   });
 }
 
 export type AssetHolding = TrackedAsset & {
   balance: bigint;
   balanceFormatted: string;
+  /** false when RPC read failed — do not treat as zero */
+  balanceOk: boolean;
   spotUsd: number | null;
   valueUsd: number | null;
 };
@@ -99,7 +112,6 @@ async function fetchSpotViaApi(asset: string): Promise<number | null> {
     const res = await fetch(`/api/pyth?asset=${asset}`, { cache: "no-store" });
     if (!res.ok) return null;
     const json = (await res.json()) as { usd?: number };
-    // API already rounds to cents — keep that exact number for table ↔ band match
     return typeof json.usd === "number" ? json.usd : null;
   } catch {
     return null;
@@ -107,54 +119,109 @@ async function fetchSpotViaApi(asset: string): Promise<number | null> {
 }
 
 function fmt(bal: bigint, decimals: number): string {
-  const n = Number(bal) / 10 ** decimals;
-  if (n === 0) return "0";
-  if (n < 0.0001) return n.toExponential(2);
-  if (n < 1) return n.toPrecision(4);
-  return n.toLocaleString(undefined, { maximumFractionDigits: 6 });
+  const s = formatUnits(bal, decimals);
+  const n = Number(s);
+  if (!Number.isFinite(n) || n === 0) return "0";
+  // Always plain decimal (no 9.99e-5) — trim trailing zeros, keep up to 8 dp.
+  const fixed = n.toFixed(Math.min(8, decimals));
+  return fixed.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "").replace(/\.$/, "");
+}
+
+async function readBalances(owner: Address): Promise<{
+  amounts: (bigint | null)[];
+}> {
+  const client = getPublicClient();
+  const erc20 = TRACKED_ASSETS.filter((a) => a.token !== "native");
+
+  const [ethBal, multicall] = await Promise.all([
+    client.getBalance({ address: owner }).catch((e) => {
+      console.error("[lga] eth balance", e);
+      return null as bigint | null;
+    }),
+    client
+      .multicall({
+        allowFailure: true,
+        contracts: erc20.map((asset) => ({
+          address: asset.token as Address,
+          abi: ERC20_ABI,
+          functionName: "balanceOf" as const,
+          args: [owner] as const,
+        })),
+      })
+      .catch((e) => {
+        console.error("[lga] multicall balances", e);
+        return null;
+      }),
+  ]);
+
+  const byId = new Map<string, bigint | null>();
+  byId.set("eth", ethBal);
+
+  if (multicall) {
+    erc20.forEach((asset, i) => {
+      const row = multicall[i];
+      byId.set(
+        asset.id,
+        row?.status === "success" ? (row.result as bigint) : null,
+      );
+    });
+  } else {
+    // Fallback: one-by-one if multicall blows up
+    await Promise.all(
+      erc20.map(async (asset) => {
+        try {
+          const bal = await client.readContract({
+            address: asset.token as Address,
+            abi: ERC20_ABI,
+            functionName: "balanceOf",
+            args: [owner],
+          });
+          byId.set(asset.id, bal);
+        } catch (e) {
+          console.error("[lga] balance", asset.id, e);
+          byId.set(asset.id, null);
+        }
+      }),
+    );
+  }
+
+  return {
+    amounts: TRACKED_ASSETS.map((a) => byId.get(a.id) ?? null),
+  };
 }
 
 export async function fetchHoldings(owner: Address): Promise<AssetHolding[]> {
-  const client = getPublicClient();
-
   const spotKeys = [...new Set(TRACKED_ASSETS.map((a) => a.priceAsset ?? "eth"))];
   const spotsByAsset = new Map<string, number | null>();
-  await Promise.all(
-    spotKeys.map(async (a) => {
-      spotsByAsset.set(a, await fetchSpotViaApi(a));
-    }),
-  );
 
-  const balances = await Promise.all(
-    TRACKED_ASSETS.map(async (asset) => {
-      try {
-        if (asset.token === "native") {
-          return await client.getBalance({ address: owner });
-        }
-        return await client.readContract({
-          address: asset.token,
-          abi: ERC20_ABI,
-          functionName: "balanceOf",
-          args: [owner],
-        });
-      } catch (e) {
-        console.error("[lga] balance", asset.id, e);
-        return 0n;
-      }
-    }),
-  );
+  const [spotsSettled, { amounts }] = await Promise.all([
+    Promise.all(
+      spotKeys.map(async (a) => {
+        spotsByAsset.set(a, await fetchSpotViaApi(a));
+      }),
+    ),
+    readBalances(owner),
+  ]);
+  void spotsSettled;
 
   return TRACKED_ASSETS.map((asset, i) => {
-    const balance = balances[i] ?? 0n;
+    const raw = amounts[i];
+    const balanceOk = raw != null;
+    const balance = raw ?? 0n;
     const spotUsd = spotsByAsset.get(asset.priceAsset ?? "eth") ?? null;
-    const balNum = Number(balance) / 10 ** asset.decimals;
+    const balNum = balanceOk ? Number(formatUnits(balance, asset.decimals)) : 0;
     return {
       ...asset,
       balance,
+      balanceOk,
       balanceFormatted:
-        asset.token === "native" ? formatEther(balance) : fmt(balance, asset.decimals),
+        !balanceOk
+          ? "—"
+          : asset.token === "native"
+            ? formatEther(balance)
+            : fmt(balance, asset.decimals),
       spotUsd,
-      valueUsd: spotUsd != null ? balNum * spotUsd : null,
+      valueUsd: balanceOk && spotUsd != null ? balNum * spotUsd : null,
     };
   });
 }
