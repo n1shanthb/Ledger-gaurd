@@ -7,9 +7,9 @@ import {SwapExecutor} from "./SwapExecutor.sol";
 import {SessionKeyValidator} from "./SessionKeyValidator.sol";
 
 /// @title GuardianPolicyManager — LGA policy registry + execution on Base
-/// @notice v2: stop-loss / take-profit, kill switch, Pyth-gated execute, ExecutionReceipt
+/// @notice v2: stop-loss / take-profit / buy-dip, kill switch, Pyth-gated execute, ExecutionReceipt
 contract GuardianPolicyManager {
-    enum PolicyType { STOP_LOSS, TAKE_PROFIT, LP_STOP_LOSS }
+    enum PolicyType { STOP_LOSS, TAKE_PROFIT, LP_STOP_LOSS, BUY_DIP }
 
     struct Policy {
         address owner;
@@ -98,11 +98,16 @@ contract GuardianPolicyManager {
         uint256 maxSlippageBps
     ) external {
         require(token != address(0), "zero token");
-        require(policyType <= uint8(PolicyType.LP_STOP_LOSS), "bad type");
+        require(policyType <= uint8(PolicyType.BUY_DIP), "bad type");
         require(maxAmount >= MIN_MAX_AMOUNT, "zero amount");
         require(maxSlippageBps <= MAX_SLIPPAGE_BPS, "invalid slippage");
 
-        if (policyType == uint8(PolicyType.TAKE_PROFIT)) {
+        if (policyType == uint8(PolicyType.BUY_DIP)) {
+            // token = asset to buy (e.g. WETH); maxAmount = USDC to spend
+            require(token != executor.usdc(), "buy base not usdc");
+            require(priceFeedId[token] != bytes32(0), "no feed");
+            require(stopLossPrice > 0 || takeProfitPrice > 0, "no trigger");
+        } else if (policyType == uint8(PolicyType.TAKE_PROFIT)) {
             require(takeProfitPrice > 0, "zero take profit");
         } else {
             require(stopLossPrice > 0, "zero stop loss");
@@ -179,16 +184,19 @@ contract GuardianPolicyManager {
         address token = policy.token;
         uint16 slip = policy.maxSlippageBps;
         uint256 amountIn = policy.maxAmount;
-        uint256 expectedOut = _expectedOut(token, amountIn, pythPrice);
+        bool isBuy = policy.policyType == uint8(PolicyType.BUY_DIP);
+        // BUY_DIP: spend USDC, watch `token` feed (e.g. ETH). Else sell `token` → USDC.
+        address spend = isBuy ? executor.usdc() : token;
+        uint256 expectedOut = _expectedOut(spend, amountIn, pythPrice);
         uint256 minOut = expectedOut * (10_000 - slip) / 10_000;
 
-        require(IERC20(token).transferFrom(owner, address(this), amountIn), "pull fail");
-        require(IERC20(token).approve(address(executor), amountIn), "approve fail");
-        uint256 amountOut = executor.swapExactIn(token, amountIn, minOut, owner);
+        require(IERC20(spend).transferFrom(owner, address(this), amountIn), "pull fail");
+        require(IERC20(spend).approve(address(executor), amountIn), "approve fail");
+        uint256 amountOut = executor.swapExactIn(spend, amountIn, minOut, owner);
 
         policy.active = false;
         emit PolicyRevoked(policyId, owner);
-        _receipt(policyId, owner, token, triggerType, pythPrice, slip, amountIn, expectedOut, amountOut);
+        _receipt(policyId, owner, spend, triggerType, pythPrice, slip, amountIn, expectedOut, amountOut);
     }
 
     function _receipt(
