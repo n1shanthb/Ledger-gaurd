@@ -209,7 +209,7 @@ export function loadSecrets(): KeeperSecrets {
     manager: get(
       bag,
       "GUARDIAN_POLICY_MANAGER_ADDRESS",
-      "0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E",
+      "0xdBf463E260573797Dd1a03B4f45876aad777453b",
     ) as `0x${string}`,
     payTo: get(bag, "HEDERA_PAY_TO", accountId),
     hederaNetwork,

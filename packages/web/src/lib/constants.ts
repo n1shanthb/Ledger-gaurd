@@ -1,14 +1,15 @@
 export const GPM_V2 =
   (process.env.NEXT_PUBLIC_GUARDIAN_POLICY_MANAGER as `0x${string}` | undefined) ??
-  ("0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E" as const);
+  ("0xdBf463E260573797Dd1a03B4f45876aad777453b" as const);
 export const SESSION_VALIDATOR =
-  "0xA7b4aB91e4792c831F49Bb915171AEDaB507bc39" as const;
+  (process.env.NEXT_PUBLIC_SESSION_VALIDATOR as `0x${string}` | undefined) ??
+  ("0xf93f56DF8481144F507dFCf30712658202E164e4" as const);
 export const SWAP_EXECUTOR =
   "0x4767a9Deee297d73B72cDD850850D11B221034Ab" as const;
 
 export const SUBGRAPH_QUERY_URL =
   process.env.NEXT_PUBLIC_SUBGRAPH_QUERY_URL ??
-  "https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.1";
+  "https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.2";
 
 export const STUDIO_URL =
   "https://thegraph.com/studio/subgraph/ledger-guardian-agent";
