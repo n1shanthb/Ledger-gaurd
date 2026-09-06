@@ -45,6 +45,17 @@ async function gql<T>(query: string, variables?: Record<string, unknown>): Promi
   return json.data;
 }
 
+export async function fetchPolicies(first = 50): Promise<PolicyRow[]> {
+  const data = await gql<{ policies: PolicyRow[] }>(`
+    {
+      policies(first: ${first}, orderBy: createdAt, orderDirection: desc) {
+        id owner token policyType stopLossPrice takeProfitPrice maxAmount active createdAt
+      }
+    }
+  `);
+  return data.policies;
+}
+
 export async function fetchConsoleData() {
   return gql<{
     policies: PolicyRow[];

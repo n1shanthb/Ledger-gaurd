@@ -33,8 +33,14 @@ export function tokenLabel(addr: string): string {
   return BASE_TOKENS[addr.toLowerCase()] ?? `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-export function usdFrom1e8(v: string | number | bigint): string {
+export function usdNumberFrom1e8(v: string | number | bigint): number | null {
   const n = typeof v === "bigint" ? Number(v) : Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return `$${(n / 1e8).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n / 1e8;
+}
+
+export function usdFrom1e8(v: string | number | bigint): string {
+  const n = usdNumberFrom1e8(v);
+  if (n == null) return "—";
+  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 }

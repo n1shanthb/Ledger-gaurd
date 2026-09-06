@@ -4,6 +4,7 @@ const links = [
   { href: "/#protocol", label: "Protocol" },
   { href: "/#pillars", label: "Pillars" },
   { href: "/console", label: "Console" },
+  { href: "/policies", label: "Policies" },
 ];
 
 export function SiteHeader() {
