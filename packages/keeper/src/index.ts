@@ -59,12 +59,20 @@ async function pollOnce() {
   if (pollBusy) return;
   pollBusy = true;
   try {
-    const r = await runCycle();
+    const r = await Promise.race([
+      runCycle(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("poll cycle timeout 90s")), 90_000),
+      ),
+    ]);
     lastPoll = {
       at: Date.now(),
       evaluated: r.evaluated,
       executed: r.executed.length,
     };
+    if (r.executed.length) {
+      console.log(`[lga] poll ok evaluated=${r.evaluated} filled=${r.executed.length}`);
+    }
   } catch (err) {
     console.error("[lga] poll error", err instanceof Error ? err.message : err);
   } finally {

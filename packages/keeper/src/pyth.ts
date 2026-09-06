@@ -78,6 +78,7 @@ async function fetchSpotHermes1e8(feedId: string): Promise<bigint> {
   const id = feedId.replace(/^0x/, "");
   const res = await fetch(`${hermesBase()}/v2/updates/price/latest?ids[]=${id}`, {
     headers: hermesHeaders(),
+    signal: AbortSignal.timeout(20_000),
   });
   if (res.status === 401 || res.status === 403) {
     throw new Error(
@@ -122,7 +123,7 @@ export async function fetchVaas(feedId: string): Promise<`0x${string}`[]> {
     try {
       const res = await fetch(
         `${base}/v2/updates/price/latest?ids[]=${id}&encoding=hex`,
-        { headers: hermesHeaders() },
+        { headers: hermesHeaders(), signal: AbortSignal.timeout(20_000) },
       );
       if (res.status === 401 || res.status === 403) {
         lastErr = `hermes ${res.status} at ${base} — check PYTH_API_KEY`;

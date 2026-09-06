@@ -27,6 +27,7 @@ export async function fetchActivePolicies(
     method: "POST",
     headers,
     body: JSON.stringify({ query: POLICIES_QUERY }),
+    signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) throw new Error(`subgraph ${res.status}`);
   const json = (await res.json()) as { data?: { policies?: PolicyRow[] }; errors?: unknown };
