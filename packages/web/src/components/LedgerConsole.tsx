@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { FundGasQr } from "@/components/FundGasQr";
+import { PolicyLevelField } from "@/components/PolicyLevelField";
+import { PolicyPriceChart } from "@/components/PolicyPriceChart";
 import { BASE_TOKENS } from "@/lib/abi";
 import { GPM_V2, usdFrom1e8 } from "@/lib/constants";
 import { fetchHoldings, type AssetHolding } from "@/lib/holdings";
@@ -25,6 +27,10 @@ import {
   formatOledPreviewRows,
   suggestStopFromSpot,
 } from "@/lib/oledPreview";
+import {
+  chartAssetForToken,
+  formDefaultsForType,
+} from "@/lib/policyDefaults";
 import {
   signAndSendSetGuardianPolicy,
   type PolicyFormValues,
@@ -72,7 +78,7 @@ export function LedgerConsole() {
     token: BASE_TOKENS.WETH as Address,
     policyType: 0,
     stopLossUsd: "2800",
-    takeProfitUsd: "4000",
+    takeProfitUsd: "0",
     maxAmount: "0.0001",
     maxAmountUnit: "eth",
     maxSlippagePercent: "0.5",
@@ -374,7 +380,10 @@ export function LedgerConsole() {
     try {
       const band = await fetchPythBand("eth");
       const usdcH = holdings.find((h) => h.id === "usdc");
-      const usdcBal = usdcH ? Number(usdcH.balanceFormatted) : 0;
+      const usdcBal =
+        usdcH?.balanceOk && usdcH.balance > 0n
+          ? Number(usdcH.balance) / 1e6
+          : 0;
       const spend =
         usdcBal >= 1 ? Math.min(usdcBal, 5).toFixed(2) : usdcBal > 0 ? usdcBal.toFixed(4) : "1";
       setTab("policy");
@@ -631,9 +640,13 @@ export function LedgerConsole() {
                       <span className="ml-2 text-xs text-mute">{h.name}</span>
                     </td>
                     <td className="py-3 pr-4 font-mono text-mute">
-                      {Number(h.balanceFormatted).toLocaleString(undefined, {
-                        maximumFractionDigits: 6,
-                      })}
+                      {!h.balanceOk ? (
+                        <span className="text-kill" title="RPC read failed — refresh">
+                          ?
+                        </span>
+                      ) : (
+                        h.balanceFormatted
+                      )}
                     </td>
                     <td className="py-3 pr-4 font-mono text-mute">
                       {h.spotUsd != null ? `$${h.spotUsd.toFixed(2)}` : "—"}
@@ -659,6 +672,15 @@ export function LedgerConsole() {
             </table>
           </div>
         </div>
+      )}
+
+      {ledgerAddress && (
+        <PolicyPriceChart
+          asset={chartAssetForToken(form.token)}
+          stopLossUsd={form.stopLossUsd}
+          takeProfitUsd={form.takeProfitUsd}
+          policyType={form.policyType}
+        />
       )}
 
       {ledgerAddress && (
@@ -749,10 +771,37 @@ export function LedgerConsole() {
           {tab === "policy" ? (
             <>
               <label className={label}>
-                Protected token
+                Policy type
+                <select
+                  className={field}
+                  value={String(form.policyType)}
+                  onChange={(e) => {
+                    const policyType = Number(e.target.value) as 0 | 1 | 2 | 3;
+                    const spot =
+                      holdings.find((h) =>
+                        form.token.toLowerCase() === BASE_TOKENS.CBBTC.toLowerCase()
+                          ? h.id === "cbbtc"
+                          : h.id === "eth" || h.id === "weth",
+                      )?.spotUsd ?? null;
+                    setForm((f) => ({
+                      ...f,
+                      ...formDefaultsForType(policyType, spot),
+                    }));
+                  }}
+                >
+                  <option value="0">Stop-loss (sell)</option>
+                  <option value="1">Take-profit (sell)</option>
+                  <option value="2">LP bounds (sell)</option>
+                  <option value="3">Buy-dip (USDC → ETH)</option>
+                </select>
+              </label>
+
+              <label className={label}>
+                {form.policyType === 3 ? "Buy asset" : "Protected token"}
                 <select
                   className={field}
                   value={form.token}
+                  disabled={form.policyType === 3}
                   onChange={(e) => {
                     const token = e.target.value as Address;
                     const isBtc =
@@ -762,80 +811,114 @@ export function LedgerConsole() {
                       token,
                       maxAmountUnit: isBtc ? "token" : "eth",
                       maxAmount: isBtc ? "0.001" : f.maxAmount,
-                      stopLossUsd: isBtc ? "90000" : f.stopLossUsd,
-                      takeProfitUsd: isBtc ? "120000" : f.takeProfitUsd,
                     }));
                   }}
                 >
                   <option value={BASE_TOKENS.WETH}>ETH (WETH)</option>
-                  <option value={BASE_TOKENS.CBBTC}>BTC (cbBTC)</option>
-                  <option value={BASE_TOKENS.USDC}>USDC</option>
-                  <option value={BASE_TOKENS.cbETH}>cbETH</option>
+                  {form.policyType !== 3 && (
+                    <>
+                      <option value={BASE_TOKENS.CBBTC}>BTC (cbBTC)</option>
+                      <option value={BASE_TOKENS.cbETH}>cbETH</option>
+                    </>
+                  )}
                 </select>
               </label>
+              {form.policyType === 3 && (
+                <p className="text-[11px] text-mute">
+                  Buy-dip always watches ETH / WETH and spends USDC.
+                </p>
+              )}
 
-              <label className={label}>
-                Policy type
-                <select
-                  className={field}
-                  value={String(form.policyType)}
-                  onChange={(e) => {
-                    const policyType = Number(e.target.value) as 0 | 1 | 2 | 3;
-                    setForm((f) => ({
-                      ...f,
-                      policyType,
-                      ...(policyType === 3
-                        ? {
-                            token: BASE_TOKENS.WETH as Address,
-                            maxAmountUnit: "usdc" as const,
-                            maxAmount: f.maxAmountUnit === "usdc" ? f.maxAmount : "1",
-                          }
-                        : f.policyType === 3
-                          ? { maxAmountUnit: "eth" as const, maxAmount: "0.0001" }
-                          : {}),
-                    }));
-                  }}
-                >
-                  <option value="0">Stop-loss (sell)</option>
-                  <option value="1">Take-profit (sell)</option>
-                  <option value="2">LP stop-loss (sell)</option>
-                  <option value="3">Buy-dip (USDC → ETH)</option>
-                </select>
-              </label>
+              {/* type-unique price levels */}
+              {(form.policyType === 0 || form.policyType === 2) && (
+                <PolicyLevelField
+                  label={
+                    form.policyType === 2
+                      ? "Bottom sell (stop)"
+                      : "Stop-loss sell price"
+                  }
+                  hint={
+                    form.policyType === 2
+                      ? "LP band floor — sell when Pyth drops to this."
+                      : "Sell when Pyth hits this floor."
+                  }
+                  side="loss"
+                  value={form.stopLossUsd}
+                  onChange={(stopLossUsd) =>
+                    setForm((f) => ({ ...f, stopLossUsd }))
+                  }
+                  asset={chartAssetForToken(form.token)}
+                />
+              )}
 
-              {(form.policyType === 0 ||
-                form.policyType === 2 ||
-                form.policyType === 3) && (
-                <label className={label}>
-                  {form.policyType === 3 ? "Buy if ETH ≤ (USD)" : "Stop-loss (USD)"}
-                  <input
-                    className={field}
+              {(form.policyType === 1 || form.policyType === 2) && (
+                <PolicyLevelField
+                  label={
+                    form.policyType === 2
+                      ? "Top take (profit)"
+                      : "Take-profit sell price"
+                  }
+                  hint={
+                    form.policyType === 2
+                      ? "LP band ceiling — sell when Pyth rises to this."
+                      : "Sell when Pyth hits this target."
+                  }
+                  side="profit"
+                  value={form.takeProfitUsd}
+                  onChange={(takeProfitUsd) =>
+                    setForm((f) => ({ ...f, takeProfitUsd }))
+                  }
+                  asset={chartAssetForToken(form.token)}
+                />
+              )}
+
+              {form.policyType === 3 && (
+                <>
+                  <PolicyLevelField
+                    label="Buy if ETH ≤"
+                    hint="Dip entry — spend USDC when ETH is at or below this."
+                    side="buy-low"
                     value={form.stopLossUsd}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, stopLossUsd: e.target.value }))
+                    onChange={(stopLossUsd) =>
+                      setForm((f) => ({ ...f, stopLossUsd }))
                     }
+                    asset="eth"
                   />
-                </label>
+                  <PolicyLevelField
+                    label="Buy if ETH ≥ (optional)"
+                    hint="Breakout entry — leave 0 to disable. Use + buttons vs spot."
+                    side="buy-high"
+                    value={form.takeProfitUsd}
+                    onChange={(takeProfitUsd) =>
+                      setForm((f) => ({ ...f, takeProfitUsd }))
+                    }
+                    asset="eth"
+                  />
+                </>
               )}
 
-              {(form.policyType === 1 ||
-                form.policyType === 2 ||
-                form.policyType === 3 ||
-                (form.policyType === 0 && Number(form.takeProfitUsd) > 0)) && (
-                <label className={label}>
-                  {form.policyType === 3 ? "Buy if ETH ≥ (USD)" : "Take-profit (USD)"}
-                  <input
-                    className={field}
-                    value={form.takeProfitUsd}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, takeProfitUsd: e.target.value }))
-                    }
-                  />
-                </label>
+              {form.policyType === 0 && (
+                <details className="rounded-lg border border-line/80 p-3">
+                  <summary className="cursor-pointer text-xs text-mute">
+                    Optional take-profit (same policy)
+                  </summary>
+                  <div className="mt-3">
+                    <PolicyLevelField
+                      label="Take-profit sell price"
+                      hint="Set 0 to skip. + buttons from live spot."
+                      side="profit"
+                      value={form.takeProfitUsd}
+                      onChange={(takeProfitUsd) =>
+                        setForm((f) => ({ ...f, takeProfitUsd }))
+                      }
+                      asset={chartAssetForToken(form.token)}
+                    />
+                  </div>
+                </details>
               )}
 
               <label className={label}>
-                Max amount
+                {form.policyType === 3 ? "USDC to spend" : "Max sell amount"}
                 <div className="mt-1.5 flex min-w-0 items-stretch gap-2">
                   <input
                     className={`${field} !mt-0 min-w-0 flex-1 !w-auto`}
@@ -847,6 +930,7 @@ export function LedgerConsole() {
                   <select
                     className={`${field} !mt-0 !w-28 shrink-0`}
                     value={form.maxAmountUnit}
+                    disabled={form.policyType === 3}
                     onChange={(e) =>
                       setForm((f) => ({
                         ...f,
@@ -860,7 +944,8 @@ export function LedgerConsole() {
                       <>
                         <option value="eth">ETH</option>
                         <option value="token">
-                          {form.token.toLowerCase() === BASE_TOKENS.CBBTC.toLowerCase()
+                          {form.token.toLowerCase() ===
+                          BASE_TOKENS.CBBTC.toLowerCase()
                             ? "BTC"
                             : "Token"}
                         </option>
