@@ -1,4 +1,7 @@
 {
-  "extends": "assemblyscript/std/assembly.json",
-  "include": ["src"]
+  "extends": "@graphprotocol/graph-ts/tsconfig",
+  "include": ["src"],
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0"
+  }
 }

@@ -6,9 +6,9 @@ dataSources:
     name: GuardianPolicyManager
     network: base
     source:
-      address: "0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E"
+      address: "0xdBf463E260573797Dd1a03B4f45876aad777453b"
       abi: GuardianPolicyManager
-      startBlock: 50868775
+      startBlock: 50944222
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

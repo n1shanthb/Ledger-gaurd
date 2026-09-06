@@ -10,6 +10,7 @@ import { Policy, ExecutionReceipt, KillSwitch } from "../generated/schema";
 function policyTypeFrom(n: i32): string {
   if (n == 1) return "TAKE_PROFIT";
   if (n == 2) return "LP_STOP_LOSS";
+  if (n == 3) return "BUY_DIP";
   return "STOP_LOSS";
 }
 

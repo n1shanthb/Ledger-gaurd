@@ -2,6 +2,7 @@ enum PolicyType {
   STOP_LOSS
   TAKE_PROFIT
   LP_STOP_LOSS
+  BUY_DIP
 }
 
 enum TriggerType {
