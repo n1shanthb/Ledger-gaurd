@@ -164,6 +164,38 @@ contract GuardianPolicyManagerTest is Test {
         manager.executePolicy(_expectedPolicyId(alice, address(weth), 0), update);
     }
 
+    function test_executePolicy_buyDip_spendsUsdc() public {
+        uint256 usdcIn = 100e6; // $100
+        vm.prank(alice);
+        // type 3 BUY_DIP: watch WETH, spend USDC when ETH <= 3000
+        manager.setGuardianPolicy(address(weth), 3, 3000e8, 0, usdcIn, 50);
+
+        usdc.mint(alice, usdcIn);
+        vm.prank(alice);
+        usdc.approve(address(manager), usdcIn);
+        vm.prank(alice);
+        validator.setSessionKey(keeper, true);
+
+        pyth.setPrice(2800e8, -8);
+        bytes[] memory update = new bytes[](1);
+        update[0] = hex"00";
+
+        bytes32 policyId = _expectedPolicyId(alice, address(weth), 0);
+        vm.prank(keeper);
+        manager.executePolicy(policyId, update);
+
+        (, , bool active, , , , , ) = manager.policies(policyId);
+        assertFalse(active);
+        assertEq(manager.totalReceipts(), 1);
+        assertEq(usdc.balanceOf(alice), 0);
+    }
+
+    function test_reverts_buyDip_usdcToken() public {
+        vm.prank(alice);
+        vm.expectRevert(bytes("buy base not usdc"));
+        manager.setGuardianPolicy(address(usdc), 3, 3000e8, 0, 100e6, 50);
+    }
+
     function test_executePolicy_rejectsUnknownKeeper() public {
         vm.prank(alice);
         manager.setGuardianPolicy(address(weth), 0, 3000e8, 0, 1 ether, 50);
