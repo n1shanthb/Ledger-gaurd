@@ -101,10 +101,11 @@ export function LedgerConsole() {
         const rows = await fetchOwnerReceipts(owner, watchFromTs.current);
         const hit = rows[0];
         if (!hit) return;
+        const triggerRaw = String(hit.triggerType);
         const trigger =
-          String(hit.triggerType) === "TAKE_PROFIT" || String(hit.triggerType) === "1"
+          triggerRaw === "TAKE_PROFIT" || triggerRaw === "1"
             ? "Take-profit"
-            : "Stop-loss";
+            : "Stop-loss / buy";
         setFillNotice({
           trigger,
           pyth: usdFrom1e8(hit.pythPrice),
@@ -367,6 +368,37 @@ export function LedgerConsole() {
       setSubmitting(false);
     }
   }, [conn, contractAddress, form, accountIndex, ensureAddress, pushLog, loadHoldings]);
+
+  const applyBuyDip = useCallback(async () => {
+    setSubmitting(true);
+    try {
+      const band = await fetchPythBand("eth");
+      const usdcH = holdings.find((h) => h.id === "usdc");
+      const usdcBal = usdcH ? Number(usdcH.balanceFormatted) : 0;
+      const spend =
+        usdcBal >= 1 ? Math.min(usdcBal, 5).toFixed(2) : usdcBal > 0 ? usdcBal.toFixed(4) : "1";
+      setTab("policy");
+      setForm((f) => ({
+        ...f,
+        token: BASE_TOKENS.WETH as Address,
+        policyType: 3,
+        maxAmountUnit: "usdc",
+        maxAmount: spend,
+        // Instant demo: buy when ETH ≤ spot+$1 (already in range)
+        stopLossUsd: Number(band.takeProfitUsd).toFixed(2),
+        takeProfitUsd: "0",
+        maxSlippagePercent: "1",
+      }));
+      pushLog(
+        "info",
+        `Buy-dip preset: spend $${spend} USDC → WETH when ETH ≤ $${Number(band.takeProfitUsd).toFixed(2)} (spot $${band.usd.toFixed(2)} — in range for demo).`,
+      );
+    } catch (e) {
+      pushLog("error", e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [holdings, pushLog]);
 
   const applyPythBand = useCallback(async () => {
     setSubmitting(true);
@@ -660,6 +692,14 @@ export function LedgerConsole() {
             <button
               type="button"
               disabled={submitting}
+              onClick={() => void applyBuyDip()}
+              className="rounded-full border border-signal/50 px-4 py-2 text-sm text-signal disabled:opacity-40"
+            >
+              Buy dip (USDC → ETH)
+            </button>
+            <button
+              type="button"
+              disabled={submitting}
               onClick={() => void applyPythBand()}
               className="rounded-full bg-signal px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
             >
@@ -739,22 +779,35 @@ export function LedgerConsole() {
                 <select
                   className={field}
                   value={String(form.policyType)}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const policyType = Number(e.target.value) as 0 | 1 | 2 | 3;
                     setForm((f) => ({
                       ...f,
-                      policyType: Number(e.target.value) as 0 | 1 | 2,
-                    }))
-                  }
+                      policyType,
+                      ...(policyType === 3
+                        ? {
+                            token: BASE_TOKENS.WETH as Address,
+                            maxAmountUnit: "usdc" as const,
+                            maxAmount: f.maxAmountUnit === "usdc" ? f.maxAmount : "1",
+                          }
+                        : f.policyType === 3
+                          ? { maxAmountUnit: "eth" as const, maxAmount: "0.0001" }
+                          : {}),
+                    }));
+                  }}
                 >
-                  <option value="0">Stop-loss</option>
-                  <option value="1">Take-profit</option>
-                  <option value="2">LP stop-loss</option>
+                  <option value="0">Stop-loss (sell)</option>
+                  <option value="1">Take-profit (sell)</option>
+                  <option value="2">LP stop-loss (sell)</option>
+                  <option value="3">Buy-dip (USDC → ETH)</option>
                 </select>
               </label>
 
-              {(form.policyType === 0 || form.policyType === 2) && (
+              {(form.policyType === 0 ||
+                form.policyType === 2 ||
+                form.policyType === 3) && (
                 <label className={label}>
-                  Stop-loss (USD)
+                  {form.policyType === 3 ? "Buy if ETH ≤ (USD)" : "Stop-loss (USD)"}
                   <input
                     className={field}
                     value={form.stopLossUsd}
@@ -767,9 +820,10 @@ export function LedgerConsole() {
 
               {(form.policyType === 1 ||
                 form.policyType === 2 ||
+                form.policyType === 3 ||
                 (form.policyType === 0 && Number(form.takeProfitUsd) > 0)) && (
                 <label className={label}>
-                  Take-profit (USD)
+                  {form.policyType === 3 ? "Buy if ETH ≥ (USD)" : "Take-profit (USD)"}
                   <input
                     className={field}
                     value={form.takeProfitUsd}
@@ -796,16 +850,22 @@ export function LedgerConsole() {
                     onChange={(e) =>
                       setForm((f) => ({
                         ...f,
-                        maxAmountUnit: e.target.value as "eth" | "token",
+                        maxAmountUnit: e.target.value as "eth" | "token" | "usdc",
                       }))
                     }
                   >
-                    <option value="eth">ETH</option>
-                    <option value="token">
-                      {form.token.toLowerCase() === BASE_TOKENS.CBBTC.toLowerCase()
-                        ? "BTC"
-                        : "Token"}
-                    </option>
+                    {form.policyType === 3 ? (
+                      <option value="usdc">USDC</option>
+                    ) : (
+                      <>
+                        <option value="eth">ETH</option>
+                        <option value="token">
+                          {form.token.toLowerCase() === BASE_TOKENS.CBBTC.toLowerCase()
+                            ? "BTC"
+                            : "Token"}
+                        </option>
+                      </>
+                    )}
                   </select>
                 </div>
               </label>
@@ -827,7 +887,11 @@ export function LedgerConsole() {
                 onClick={() => void submitPolicy()}
                 className="mt-2 rounded-full bg-paper px-5 py-2.5 text-sm font-semibold text-ink disabled:opacity-40"
               >
-                {submitting ? "Waiting on Ledger…" : "Clear-sign policy (auto-wrap ETH)"}
+                {submitting
+                  ? "Waiting on Ledger…"
+                  : form.policyType === 3
+                    ? "Clear-sign buy-dip (approve USDC)"
+                    : "Clear-sign policy (auto-wrap ETH)"}
               </button>
             </>
           ) : (

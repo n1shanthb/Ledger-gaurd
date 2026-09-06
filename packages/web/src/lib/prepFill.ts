@@ -51,7 +51,7 @@ const SESSION_ABI = [
 
 export const SESSION_VALIDATOR =
   (process.env.NEXT_PUBLIC_SESSION_VALIDATOR as Address | undefined) ??
-  ("0xA7b4aB91e4792c831F49Bb915171AEDaB507bc39" as Address);
+  ("0xf93f56DF8481144F507dFCf30712658202E164e4" as Address);
 
 export const KEEPER_SESSION_KEY =
   (process.env.NEXT_PUBLIC_KEEPER_ADDRESS as Address | undefined) ??

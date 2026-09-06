@@ -3,6 +3,7 @@ import {
   createPublicClient,
   encodeFunctionData,
   formatEther,
+  formatUnits,
   hexToBytes,
   http,
   maxUint256,
@@ -29,11 +30,11 @@ import { policyReviewMessage } from "./oledPreview";
 
 export type PolicyFormValues = {
   token: Address;
-  policyType: 0 | 1 | 2;
+  policyType: 0 | 1 | 2 | 3;
   stopLossUsd: string;
   takeProfitUsd: string;
   maxAmount: string;
-  maxAmountUnit: "eth" | "token";
+  maxAmountUnit: "eth" | "token" | "usdc";
   maxSlippagePercent: string;
 };
 
@@ -42,7 +43,7 @@ export type PolicySignResult =
   | { status: "rejected" }
   | { status: "error"; message: string };
 
-const WETH_ABI = parseAbi([
+const ERC20_ABI = parseAbi([
   "function deposit() payable",
   "function approve(address spender, uint256 amount) returns (bool)",
   "function balanceOf(address) view returns (uint256)",
@@ -63,19 +64,31 @@ export function getPublicClient() {
   });
 }
 
+export function isBuyDip(form: PolicyFormValues): boolean {
+  return form.policyType === 3;
+}
+
 export function parsePolicyParams(form: PolicyFormValues) {
-  // Type 0/2 can set both bounds (Pyth ±$1 band). Contract triggers on either side.
+  const buy = isBuyDip(form);
   const stopLossPrice =
     form.policyType === 1 ? 0n : parseUnits(form.stopLossUsd || "0", 8);
   const takeProfitPrice =
-    form.policyType === 1 || Number(form.takeProfitUsd) > 0
+    form.policyType === 1 || buy || Number(form.takeProfitUsd) > 0
       ? parseUnits(form.takeProfitUsd || "0", 8)
       : 0n;
-  const maxAmount =
+
+  let maxAmount: bigint;
+  if (buy || form.maxAmountUnit === "usdc") {
+    maxAmount = parseUnits(form.maxAmount || "0", 6);
+  } else if (
     form.maxAmountUnit === "eth" &&
     form.token.toLowerCase() === BASE_TOKENS.WETH.toLowerCase()
-      ? parseEther(form.maxAmount)
-      : parseUnits(form.maxAmount, tokenDecimals(form.token));
+  ) {
+    maxAmount = parseEther(form.maxAmount);
+  } else {
+    maxAmount = parseUnits(form.maxAmount, tokenDecimals(form.token));
+  }
+
   const maxSlippageBps = BigInt(
     Math.round(parseFloat(form.maxSlippagePercent) * 100),
   );
@@ -127,22 +140,19 @@ export async function signTransactionOnLedger(
             break;
           }
           case DeviceActionStatus.Stopped:
-            onLog({ level: "warn", message: "Rejected on Ledger." });
+            onLog({ level: "warn", message: "Tx rejected on Ledger." });
             sub.unsubscribe();
             resolve("rejected");
             break;
           case DeviceActionStatus.Error: {
-            const err = state.error;
             onLog({
-              level: isUserRejection(err) ? "warn" : "error",
-              message: formatLedgerError(err),
+              level: isUserRejection(state.error) ? "warn" : "error",
+              message: formatLedgerError(state.error),
             });
             sub.unsubscribe();
             resolve("rejected");
             break;
           }
-          default:
-            break;
         }
       },
       error: (err) => {
@@ -167,7 +177,6 @@ async function signSendRaw(
   accountIndex: number,
 ): Promise<PolicySignResult> {
   const client = getPublicClient();
-  // pending = include in-flight txs so wrap → approve → policy never reuse a nonce
   const [nonce, fees] = await Promise.all([
     client.getTransactionCount({ address: from, blockTag: "pending" }),
     client.estimateFeesPerGas(),
@@ -207,6 +216,51 @@ async function signSendRaw(
   }
 }
 
+/** BUY_DIP: approve GPM to pull USDC. */
+async function ensureUsdcForBuy(
+  sessionId: DeviceSessionId,
+  from: Address,
+  gpm: Address,
+  need: bigint,
+  onLog: (entry: Omit<LogEntry, "id" | "ts">) => void,
+  accountIndex: number,
+): Promise<PolicySignResult | null> {
+  const client = getPublicClient();
+  const usdc = BASE_TOKENS.USDC as Address;
+  const bal = await client.readContract({
+    address: usdc,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [from],
+  });
+  if (bal < need) {
+    return {
+      status: "error",
+      message: `Need ${formatUnits(need, 6)} USDC to buy. Have ${formatUnits(bal, 6)}.`,
+    };
+  }
+  const allowance = await client.readContract({
+    address: usdc,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: [from, gpm],
+  });
+  if (allowance < need) {
+    onLog({
+      level: "info",
+      message: "Auto-approve GPM to pull USDC for the buy…",
+    });
+    const data = encodeFunctionData({
+      abi: ERC20_ABI,
+      functionName: "approve",
+      args: [gpm, maxUint256],
+    });
+    const appr = await signSendRaw(sessionId, from, usdc, data, 0n, onLog, accountIndex);
+    if (appr.status !== "success") return appr;
+  }
+  return null;
+}
+
 /** If policy is WETH and balance is short, wrap native ETH automatically. */
 async function ensureWethForPolicy(
   sessionId: DeviceSessionId,
@@ -221,7 +275,7 @@ async function ensureWethForPolicy(
 
   const wethBal = await client.readContract({
     address: weth,
-    abi: WETH_ABI,
+    abi: ERC20_ABI,
     functionName: "balanceOf",
     args: [from],
   });
@@ -239,7 +293,7 @@ async function ensureWethForPolicy(
       level: "info",
       message: `Auto-wrap ${formatEther(shortfall)} ETH → WETH (shows as WETH in Ledger Live until fill)…`,
     });
-    const data = encodeFunctionData({ abi: WETH_ABI, functionName: "deposit" });
+    const data = encodeFunctionData({ abi: ERC20_ABI, functionName: "deposit" });
     const wrap = await signSendRaw(
       sessionId,
       from,
@@ -254,7 +308,7 @@ async function ensureWethForPolicy(
 
   const allowance = await client.readContract({
     address: weth,
-    abi: WETH_ABI,
+    abi: ERC20_ABI,
     functionName: "allowance",
     args: [from, gpm],
   });
@@ -264,7 +318,7 @@ async function ensureWethForPolicy(
       message: "Auto-approve GPM to pull WETH for the exit…",
     });
     const data = encodeFunctionData({
-      abi: WETH_ABI,
+      abi: ERC20_ABI,
       functionName: "approve",
       args: [gpm, maxUint256],
     });
@@ -295,15 +349,42 @@ export async function signAndSendSetGuardianPolicy(
   const { stopLossPrice, takeProfitPrice, maxAmount: wanted, maxSlippageBps } =
     parsePolicyParams(form);
 
+  const buy = isBuyDip(form);
   const isWeth = form.token.toLowerCase() === BASE_TOKENS.WETH.toLowerCase();
   let maxAmount = wanted;
   let formForChain = form;
 
-  if (isWeth) {
+  if (buy) {
+    const usdc = BASE_TOKENS.USDC as Address;
+    const usdcBal = await client.readContract({
+      address: usdc,
+      abi: ERC20_ABI,
+      functionName: "balanceOf",
+      args: [from],
+    });
+    if (usdcBal === 0n) {
+      return {
+        status: "error",
+        message: `Need USDC on Base to buy ETH. Have 0 USDC on ${from}.`,
+      };
+    }
+    if (wanted > usdcBal) {
+      maxAmount = usdcBal;
+      formForChain = {
+        ...form,
+        maxAmount: formatUnits(usdcBal, 6),
+        maxAmountUnit: "usdc",
+      };
+      onLog({
+        level: "warn",
+        message: `USDC spend capped to ${formatUnits(usdcBal, 6)} (wallet balance).`,
+      });
+    }
+  } else if (isWeth) {
     const weth = BASE_TOKENS.WETH as Address;
     const wethBal = await client.readContract({
       address: weth,
-      abi: WETH_ABI,
+      abi: ERC20_ABI,
       functionName: "balanceOf",
       args: [from],
     });
@@ -333,7 +414,10 @@ export async function signAndSendSetGuardianPolicy(
     }
   }
 
-  const review = policyReviewMessage(formForChain, { autoWrap: isWeth });
+  const review = policyReviewMessage(formForChain, {
+    autoWrap: isWeth && !buy,
+    buyDip: buy,
+  });
   onLog({
     level: "info",
     message: "OLED policy review (scroll device to read details)…",
@@ -341,7 +425,17 @@ export async function signAndSendSetGuardianPolicy(
   const reviewed = await signMessageOnLedger(sessionId, review, onLog, accountIndex);
   if (reviewed === "rejected") return { status: "rejected" };
 
-  if (isWeth) {
+  if (buy) {
+    const prep = await ensureUsdcForBuy(
+      sessionId,
+      from,
+      contractAddress,
+      maxAmount,
+      onLog,
+      accountIndex,
+    );
+    if (prep) return prep;
+  } else if (isWeth) {
     const prep = await ensureWethForPolicy(
       sessionId,
       from,
@@ -383,8 +477,9 @@ export async function signAndSendSetGuardianPolicy(
   if (result.status === "success") {
     onLog({
       level: "info",
-      message:
-        "Policy live. Protected amount sits as WETH in Ledger Live until stop/take fills → USDC.",
+      message: buy
+        ? "Buy-dip live. Keeper spends USDC → WETH when ETH hits your level."
+        : "Policy live. Protected amount sits as WETH in Ledger Live until stop/take fills → USDC.",
     });
   }
   return result;

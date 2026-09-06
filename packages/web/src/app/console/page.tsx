@@ -20,6 +20,7 @@ function policyTypeLabel(t: string | number) {
   const s = String(t);
   if (s === "1" || s === "TAKE_PROFIT") return "Take-profit";
   if (s === "2" || s === "LP_STOP_LOSS") return "LP stop-loss";
+  if (s === "3" || s === "BUY_DIP") return "Buy-dip";
   return "Stop-loss";
 }
 
