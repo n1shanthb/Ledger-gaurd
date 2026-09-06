@@ -12,6 +12,7 @@
     "@ledgerhq/device-management-kit": "^1.9.0",
     "@ledgerhq/device-signer-kit-ethereum": "^1.18.0",
     "@ledgerhq/device-transport-kit-web-hid": "^1.2.4",
+    "lightweight-charts": "^4.2.3",
     "next": "15.1.9",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
