@@ -29,7 +29,7 @@ npx graph deploy ledger-guardian-agent \
   --version-label v0.0.1
 ```
 
-**Live (v0.0.1):** [Studio](https://thegraph.com/studio/subgraph/ledger-guardian-agent) · Query `https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.1`
+**Live (v0.0.2):** [Studio](https://thegraph.com/studio/subgraph/ledger-guardian-agent) · Query `https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.2`
 
 After sync, set `SUBGRAPH_QUERY_URL` in Key Ring (`npm run ring:enroll`). **Do not mock this URL.**
 

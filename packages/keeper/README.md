@@ -52,6 +52,8 @@ WALLET_PASS=… npm start
 
 `GET /health` · `GET /policies` · `POST /trigger`
 
+**Laptop off:** deploy with Key Ring on Railway — see [RAILWAY.md](./RAILWAY.md) (also cheap INR VPS options).
+
 ## x402 payment flow (Hedera)
 
 ```text

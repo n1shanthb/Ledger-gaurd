@@ -185,7 +185,7 @@ Consumer:   Keeper agent or CLI script using @x402/hedera
 | Resource | URL |
 |---|---|
 | Subgraph Studio | https://thegraph.com/studio/subgraph/ledger-guardian-agent |
-| Query URL | https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.1 |
+| Query URL | https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.2 |
 | Keeper API | `http://127.0.0.1:3001` (local) / ngrok for demo |
 | Contract (v2) | https://basescan.org/address/0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E |
 | Example policy tx | https://basescan.org/tx/0x6c249efd8f5dcec73b33fc6d155e24f7f53274f2fb167bf8f6eae6d7cc27a7a9 |

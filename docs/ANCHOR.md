@@ -26,6 +26,7 @@
 |---|---|---|
 | **LP / stop-loss exit** | Clear-sign “sell if price ≤ X” | Ledger |
 | **Take-profit exit** | Clear-sign “sell at this rate for profit” | Ledger |
+| **Buy-dip entry** | Clear-sign “spend USDC → buy ETH if price ≤ X” | Ledger |
 | **Key Ring secrets** | Keeper session key + API creds via `wallet-cli ring` | Ledger |
 | **x402 keeper gate** | `POST /trigger` requires HBAR via Blocky402 | Hedera + Ledger |
 | **Kill switch** | Ledger-signed revoke all policies + session keys | Ledger |

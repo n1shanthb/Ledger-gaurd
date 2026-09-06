@@ -89,16 +89,23 @@ Get API key: [basescan.org/myapikey](https://basescan.org/myapikey)
 
 Wire this into `packages/hardware-test/.env` and `clear-signing/*.erc7730.json` (already done in repo).
 
-## v2 live on Base (Foundry)
+## v3 live on Base (BUY_DIP)
 
 | Contract | Address |
 |---|---|
-| **GuardianPolicyManager** | [`0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E`](https://basescan.org/address/0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E) |
-| SwapExecutor | [`0x4767a9Deee297d73B72cDD850850D11B221034Ab`](https://basescan.org/address/0x4767a9Deee297d73B72cDD850850D11B221034Ab) |
+| **GuardianPolicyManager** | [`0xdBf463E260573797Dd1a03B4f45876aad777453b`](https://basescan.org/address/0xdBf463E260573797Dd1a03B4f45876aad777453b) |
+| SessionKeyValidator | [`0xf93f56DF8481144F507dFCf30712658202E164e4`](https://basescan.org/address/0xf93f56DF8481144F507dFCf30712658202E164e4) |
+| SwapExecutor (reused) | [`0x4767a9Deee297d73B72cDD850850D11B221034Ab`](https://basescan.org/address/0x4767a9Deee297d73B72cDD850850D11B221034Ab) |
+| Deploy tx | [`0x8ce0c859…`](https://basescan.org/tx/0x8ce0c859dbb5df8be3117239637215fc5d4119c54f320ea645e99563e761f6c2) |
+| startBlock | `50944222` |
+
+### Prior v2 (exits only)
+
+| Contract | Address |
+|---|---|
+| GuardianPolicyManager | [`0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E`](https://basescan.org/address/0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E) |
 | SessionKeyValidator | [`0xA7b4aB91e4792c831F49Bb915171AEDaB507bc39`](https://basescan.org/address/0xA7b4aB91e4792c831F49Bb915171AEDaB507bc39) |
-| GPM tx | [`0xa82233f7…`](https://basescan.org/tx/0xa82233f7d74b101d262e1ba0dc7975bca2bfce7db773d20dc645cf8a48410b34) |
 | startBlock | `50868775` |
-| Deployer | `0x6304aC44968A032693afe8ddBB74e3Dd05D3692B` |
 
 ## v2 (code ready — redeploy)
 
