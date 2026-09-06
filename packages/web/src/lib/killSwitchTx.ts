@@ -38,7 +38,8 @@ export async function signAndSendKillSwitch(
     onLog,
     accountIndex,
   );
-  if (reviewed === "rejected") return { status: "rejected" };
+  if (reviewed.status === "rejected") return { status: "rejected" };
+  if (reviewed.status === "error") return { status: "error", message: reviewed.message };
 
   const data = encodeFunctionData({
     abi: guardianPolicyManagerAbi,

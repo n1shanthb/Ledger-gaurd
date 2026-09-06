@@ -423,7 +423,8 @@ export async function signAndSendSetGuardianPolicy(
     message: "OLED policy review (scroll device to read details)…",
   });
   const reviewed = await signMessageOnLedger(sessionId, review, onLog, accountIndex);
-  if (reviewed === "rejected") return { status: "rejected" };
+  if (reviewed.status === "rejected") return { status: "rejected" };
+  if (reviewed.status === "error") return { status: "error", message: reviewed.message };
 
   if (buy) {
     const prep = await ensureUsdcForBuy(

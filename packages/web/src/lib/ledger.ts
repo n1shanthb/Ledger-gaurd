@@ -148,16 +148,37 @@ export async function getLedgerEthAddress(
   });
 }
 
+export type OledReviewResult =
+  | { status: "approved" }
+  | { status: "rejected" }
+  | { status: "error"; message: string };
+
+function resolveOledError(err: unknown): OledReviewResult {
+  if (isUserRejection(err)) return { status: "rejected" };
+  const message = formatLedgerError(err);
+  // InvalidStatusWordError ≠ user reject (often non-ASCII msg / app glitch)
+  if (/InvalidStatusWord/i.test(message)) {
+    return {
+      status: "error",
+      message:
+        "OLED review failed (InvalidStatusWord). Quit+reopen Ethereum app, then retry. If it keeps failing, Settings → Blind signing → Enabled.",
+    };
+  }
+  return { status: "error", message };
+}
+
 /** Show a multi-line message on OLED (works without ERC-7730 registry). */
 export function signMessageOnLedger(
   sessionId: DeviceSessionId,
   message: string,
   onLog: (entry: Omit<LogEntry, "id" | "ts">) => void,
   accountIndex = 0,
-): Promise<"approved" | "rejected"> {
+): Promise<OledReviewResult> {
   const signerEth = buildSignerEth(sessionId);
   const path = derivationPathForAccount(accountIndex);
-  const { observable } = signerEth.signMessage(path, message);
+  // Device expects printable ASCII; strip anything else before APDU.
+  const safe = message.replace(/[^\x20-\x7E\n]/g, "");
+  const { observable } = signerEth.signMessage(path, safe);
   let lastInteraction: string | null = null;
 
   return new Promise((resolve) => {
@@ -180,21 +201,22 @@ export function signMessageOnLedger(
           case DeviceActionStatus.Completed:
             onLog({ level: "success", message: "OLED review approved." });
             sub.unsubscribe();
-            resolve("approved");
+            resolve({ status: "approved" });
             break;
           case DeviceActionStatus.Stopped:
             onLog({ level: "warn", message: "OLED review rejected." });
             sub.unsubscribe();
-            resolve("rejected");
+            resolve({ status: "rejected" });
             break;
           case DeviceActionStatus.Error: {
             const err = state.error;
+            const out = resolveOledError(err);
             onLog({
-              level: isUserRejection(err) ? "warn" : "error",
-              message: formatLedgerError(err),
+              level: out.status === "rejected" ? "warn" : "error",
+              message: out.status === "error" ? out.message : formatLedgerError(err),
             });
             sub.unsubscribe();
-            resolve("rejected");
+            resolve(out);
             break;
           }
           default:
@@ -202,12 +224,13 @@ export function signMessageOnLedger(
         }
       },
       error: (err) => {
+        const out = resolveOledError(err);
         onLog({
-          level: isUserRejection(err) ? "warn" : "error",
-          message: formatLedgerError(err),
+          level: out.status === "rejected" ? "warn" : "error",
+          message: out.status === "error" ? out.message : formatLedgerError(err),
         });
         sub.unsubscribe();
-        resolve("rejected");
+        resolve(out);
       },
     });
   });

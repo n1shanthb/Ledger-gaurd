@@ -62,7 +62,7 @@ export function policyReviewMessage(
   lines.push(`Slippage: ${form.maxSlippagePercent}%`);
 
   if (opts?.buyDip) {
-    lines.push("", "Spends USDC → receives WETH", "when Pyth hits level");
+    lines.push("", "Spends USDC -> receives WETH", "when Pyth hits level");
   } else if (opts?.autoWrap) {
     lines.push(
       "",
@@ -74,7 +74,8 @@ export function policyReviewMessage(
 
   lines.push("", "Approve = continue to tx", "Reject = cancel");
 
-  return lines.join("\n");
+  // Ledger personal_sign chokes on non-ASCII (InvalidStatusWordError).
+  return lines.join("\n").replace(/[^\x20-\x7E\n]/g, "");
 }
 
 export function killReviewMessage(): string {
@@ -87,7 +88,9 @@ export function killReviewMessage(): string {
     "",
     "Approve = continue to tx",
     "Reject = cancel",
-  ].join("\n");
+  ]
+    .join("\n")
+    .replace(/[^\x20-\x7E\n]/g, "");
 }
 
 export function formatOledPreviewRows(form: PolicyFormValues): { label: string; value: string }[] {
