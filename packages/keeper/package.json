@@ -8,9 +8,11 @@
     "dev": "node --import tsx --watch src/index.ts",
     "ring:enroll": "node --import tsx src/enroll.ts",
     "complete-account": "node --import tsx src/completeAccount.ts",
-    "pay": "node --import tsx src/pay.ts"
+    "pay": "node --import tsx src/pay.ts",
+    "pay:on-hit": "node --import tsx src/payOnHit.ts"
   },
   "dependencies": {
+    "@hashgraph/sdk": "^2.81.0",
     "@x402/core": "^2.25.0",
     "@x402/express": "^2.25.0",
     "@x402/fetch": "^2.25.0",
