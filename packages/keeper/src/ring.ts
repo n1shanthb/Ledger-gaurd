@@ -62,10 +62,15 @@ export type KeeperSecrets = {
   graphApiKey: string;
   facilitator: string;
   paymentAmount: string;
+  quoteAmount: string;
   manager: `0x${string}`;
   payTo: string;
   hederaNetwork: "hedera:mainnet" | "hedera:testnet";
   hederaAccountId: string;
+  openRouterApiKey: string;
+  openRouterModel: string;
+  hcsTopicId: string;
+  paymentAuditLog: string;
 };
 
 export function ringAvailable(): boolean {
@@ -179,7 +184,14 @@ export function loadSecrets(): KeeperSecrets {
   }
 
   // Pyth helpers read process.env — surface keys from ring/env bag
-  for (const k of ["PYTH_API_KEY", "PYTH_PRICE_SERVICE_URL", "BASE_RPC_URL"]) {
+  for (const k of [
+    "PYTH_API_KEY",
+    "PYTH_PRICE_SERVICE_URL",
+    "BASE_RPC_URL",
+    "HCS_TOPIC_ID",
+    "PAYMENT_AUDIT_LOG",
+    "OPENROUTER_API_KEY",
+  ]) {
     const v = bag[k] ?? process.env[k];
     if (v) process.env[k] = v;
   }
@@ -206,6 +218,7 @@ export function loadSecrets(): KeeperSecrets {
         : "https://api.testnet.blocky402.com",
     ),
     paymentAmount: get(bag, "X402_PAYMENT_AMOUNT", "100000"),
+    quoteAmount: get(bag, "X402_QUOTE_AMOUNT", "10000"),
     manager: get(
       bag,
       "GUARDIAN_POLICY_MANAGER_ADDRESS",
@@ -214,6 +227,10 @@ export function loadSecrets(): KeeperSecrets {
     payTo: get(bag, "HEDERA_PAY_TO", accountId),
     hederaNetwork,
     hederaAccountId: accountId,
+    openRouterApiKey: get(bag, "OPENROUTER_API_KEY", ""),
+    openRouterModel: get(bag, "OPENROUTER_MODEL", "openai/gpt-4o-mini"),
+    hcsTopicId: get(bag, "HCS_TOPIC_ID", ""),
+    paymentAuditLog: get(bag, "PAYMENT_AUDIT_LOG", ""),
   };
 }
 
