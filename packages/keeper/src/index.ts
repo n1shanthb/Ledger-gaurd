@@ -1,58 +1,23 @@
 import express from "express";
 import { loadSecrets, ringStatus } from "./ring";
 import { fetchActivePolicies, mcpHint } from "./subgraph";
-import { feedForToken, fetchSpotUsd1e8, fetchVaas, shouldTrigger } from "./pyth";
-import { executePolicy } from "./executor";
+import { runCycle } from "./cycle";
 import { keeperX402 } from "./x402";
+import { newAttemptId, recentPayments, recordPayment } from "./payments";
+import { hashscanFromPayment } from "./paidTrigger";
+import { submitHcsMemo, hcsHashscanUrl } from "./hcsAudit";
+import { recordOnChainPaymentAudit } from "./paymentAuditTx";
+import { agentChat } from "./agent/chat";
 
 const secrets = loadSecrets();
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
-/** Operator loop + paid /trigger share this. x402 only wraps the HTTP route. */
-async function runCycle() {
-  const policies = await fetchActivePolicies(secrets.graphUrl, secrets.graphApiKey);
-  const hits: { policyId: string; trigger: string; tx?: string }[] = [];
-
-  for (const pol of policies) {
-    const feed = feedForToken(pol.token);
-    const spot = await fetchSpotUsd1e8(feed);
-    const trigger = shouldTrigger(
-      spot,
-      BigInt(pol.stopLossPrice),
-      BigInt(pol.takeProfitPrice),
-    );
-    if (!trigger) {
-      console.log(
-        `[lga] skip ${pol.id.slice(0, 10)}… spot=${Number(spot) / 1e8} stop=${Number(pol.stopLossPrice) / 1e8} take=${Number(pol.takeProfitPrice) / 1e8}`,
-      );
-      continue;
-    }
-
-    console.log(`[lga] hit ${trigger} ${pol.id.slice(0, 10)}… executing`);
-    const vaas = await fetchVaas(feed);
-    const tx = await executePolicy({
-      rpc: secrets.baseRpc,
-      sessionKey: secrets.sessionKey,
-      manager: secrets.manager,
-      policyId: pol.id,
-      vaas,
-    });
-    hits.push({ policyId: pol.id, trigger, tx });
-    console.log(`[lga] filled ${tx}`);
-  }
-
-  return {
-    evaluated: policies.length,
-    executed: hits,
-    note:
-      hits.length === 0 && policies.length > 0
-        ? "No policy in range — wait for band or Instant-fill"
-        : undefined,
-  };
-}
-
-let lastPoll: { at: number; evaluated: number; executed: number } | null = null;
+let lastPoll: {
+  at: number;
+  evaluated: number;
+  executed: number;
+} | null = null;
 let pollBusy = false;
 
 async function pollOnce() {
@@ -60,7 +25,7 @@ async function pollOnce() {
   pollBusy = true;
   try {
     const r = await Promise.race([
-      runCycle(),
+      runCycle(secrets, { execute: true }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("poll cycle timeout 90s")), 90_000),
       ),
@@ -80,14 +45,74 @@ async function pollOnce() {
   }
 }
 
+async function handlePaidCycle(
+  req: express.Request,
+  res: express.Response,
+  path: "trigger" | "quote",
+) {
+  const attemptId = newAttemptId();
+  const execute = path === "trigger";
+  try {
+    const r = await runCycle(secrets, { execute });
+    const paymentResponse =
+      (req.headers["payment-response"] as string | undefined) ??
+      (req.headers["PAYMENT-RESPONSE"] as string | undefined) ??
+      null;
+    const hashscanUrl = hashscanFromPayment(secrets.hederaNetwork, paymentResponse);
+    let hcsRef: string | null = null;
+    if (execute) {
+      hcsRef = await submitHcsMemo(secrets, {
+        attemptId,
+        path,
+        executed: r.executed,
+        paymentResponse: paymentResponse?.slice(0, 500) ?? null,
+      });
+      for (const hit of r.executed) {
+        if (!hit.tx) continue;
+        await recordOnChainPaymentAudit(secrets, {
+          attemptId,
+          policyId: hit.policyId,
+          baseTx: hit.tx,
+          hederaPaymentRef: hashscanUrl ?? paymentResponse?.slice(0, 120) ?? "",
+          hcsRef: hcsRef ?? "",
+        });
+      }
+    }
+    recordPayment({
+      attemptId,
+      paidAt: Date.now(),
+      path,
+      evaluated: r.evaluated,
+      executed: r.executed,
+      paymentResponse,
+      hashscanUrl,
+      hcsRef,
+      note: r.note,
+    });
+    res.json({
+      attemptId,
+      ...r,
+      hashscanUrl,
+      hcsRef,
+      hcsTopicUrl: hcsHashscanUrl(secrets.hederaNetwork, hcsRef),
+      mcp: mcpHint(secrets.graphUrl),
+    });
+  } catch (err) {
+    res.status(500).json({ error: String(err), attemptId });
+  }
+}
+
 app.get("/health", (_req, res) => {
+  const pollMs = Number(process.env.POLL_MS ?? 0);
   res.json({
     ok: true,
     mcp: mcpHint(secrets.graphUrl),
     keyRing: ringStatus(secrets),
     network: secrets.hederaNetwork,
+    openRouter: Boolean(secrets.openRouterApiKey),
     poll: {
-      ms: Number(process.env.POLL_MS ?? 30_000),
+      ms: pollMs,
+      mode: pollMs > 0 ? "dev_autopoll" : "x402_only",
       last: lastPoll,
     },
   });
@@ -102,6 +127,28 @@ app.get("/policies", async (_req, res) => {
   }
 });
 
+app.get("/payments/recent", (req, res) => {
+  const limit = Number(req.query.limit ?? 20);
+  res.json({ payments: recentPayments(limit) });
+});
+
+app.post("/agent/chat", async (req, res) => {
+  try {
+    const messages = (req.body?.messages ?? []) as {
+      role: "user" | "assistant";
+      content: string;
+    }[];
+    if (!messages.length) {
+      res.status(400).json({ error: "messages required" });
+      return;
+    }
+    const out = await agentChat(secrets, messages);
+    res.json(out);
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 if (!secrets.payTo) {
   console.warn("[lga] HEDERA_PAY_TO / HEDERA_ACCOUNT_ID missing — /trigger will 500 on 402 setup");
 }
@@ -111,30 +158,32 @@ app.use(
     facilitator: secrets.facilitator,
     payTo: secrets.payTo,
     amount: secrets.paymentAmount,
+    quoteAmount: secrets.quoteAmount,
     network: secrets.hederaNetwork,
   }),
 );
 
-app.post("/trigger", async (_req, res) => {
-  try {
-    res.json(await runCycle());
-  } catch (err) {
-    res.status(500).json({ error: String(err) });
-  }
+app.post("/trigger", async (req, res) => {
+  await handlePaidCycle(req, res, "trigger");
 });
 
-const port = Number(process.env.KEEPER_PORT ?? 3001);
-const pollMs = Number(process.env.POLL_MS ?? 30_000);
+app.post("/quote", async (req, res) => {
+  await handlePaidCycle(req, res, "quote");
+});
+
+const port = Number(process.env.KEEPER_PORT ?? process.env.PORT ?? 3001);
+const pollMs = Number(process.env.POLL_MS ?? 0);
 
 app.listen(port, () => {
   const kr = ringStatus(secrets);
-  console.log(`[lga] keeper :${port}  POST /trigger is x402-gated`);
+  console.log(`[lga] keeper :${port}  POST /trigger + /quote are x402-gated`);
   console.log(`[lga] Key Ring: ${kr.source} headless=${kr.headless}`);
+  console.log(`[lga] OpenRouter: ${secrets.openRouterApiKey ? "enrolled" : "missing"}`);
   if (pollMs > 0) {
-    console.log(`[lga] autopoll every ${pollMs}ms (set POLL_MS=0 to disable)`);
+    console.log(`[lga] DEV autopoll every ${pollMs}ms (prize mode: POLL_MS=0)`);
     void pollOnce();
     setInterval(() => void pollOnce(), pollMs);
   } else {
-    console.log("[lga] autopoll off — use npm run pay or POLL_MS=30000");
+    console.log("[lga] autopoll off — execution only via paid POST /trigger (or npm run pay:on-hit)");
   }
 });
