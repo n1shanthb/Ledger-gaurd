@@ -30,3 +30,24 @@ dataSources:
         - event: KillSwitchActivated(indexed address,uint256,uint256)
           handler: handleKillSwitchActivated
       file: ./src/mapping.ts
+  - kind: ethereum
+    name: PaymentAuditLog
+    network: base
+    source:
+      address: "0x689ae72edebbf31c59e79b3cd0926a7bd638f495"
+      abi: PaymentAuditLog
+      startBlock: 51045462
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - PaymentAudit
+        - Policy
+      abis:
+        - name: PaymentAuditLog
+          file: ./abis/PaymentAuditLog.json
+      eventHandlers:
+        - event: PaymentAudit(indexed bytes32,indexed bytes32,bytes32,string,string,uint256)
+          handler: handlePaymentAudit
+      file: ./src/mapping.ts

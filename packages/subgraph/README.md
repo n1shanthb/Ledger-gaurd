@@ -6,9 +6,10 @@ Live indexer for LGA policies, execution receipts, and kill-switch events.
 
 ## Prereqs
 
-1. Deploy **contract v2** (`packages/contracts`) so events match this ABI.
-2. Paste the new address + startBlock into `subgraph.yaml` (`source.address`, `source.startBlock`).
-3. Subgraph Studio account + deploy key.
+1. Deploy **GPM** (`packages/contracts`) so events match this ABI.
+2. **PaymentAuditLog** live on Base: `0x689ae72edebbf31c59e79b3cd0926a7bd638f495` (startBlock `51045462`).
+3. Paste GPM address + startBlock into `subgraph.yaml`.
+4. Subgraph Studio account + deploy key.
 
 ## Local codegen / build
 
@@ -29,7 +30,7 @@ npx graph deploy ledger-guardian-agent \
   --version-label v0.0.1
 ```
 
-**Live (v0.0.2):** [Studio](https://thegraph.com/studio/subgraph/ledger-guardian-agent) · Query `https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.2`
+**Live (v0.0.4):** [Studio](https://thegraph.com/studio/subgraph/ledger-guardian-agent) · Query `https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.4`
 
 After sync, set `SUBGRAPH_QUERY_URL` in Key Ring (`npm run ring:enroll`). **Do not mock this URL.**
 
@@ -76,7 +77,8 @@ After sync, set `SUBGRAPH_QUERY_URL` in Key Ring (`npm run ring:enroll`). **Do n
 | `Policy` | `PolicyCreated` / `PolicyRevoked` |
 | `ExecutionReceipt` | `ExecutionReceipt` (`compliant` is the demo field) |
 | `KillSwitch` | `KillSwitchActivated` |
+| `PaymentAudit` | `PaymentAuditLog.PaymentAudit` (HCS / HashScan refs) |
 
 ## Subgraph MCP
 
-Point MCP at the Studio query URL. Keeper uses it for “active policies for USDC” style prompts — see `packages/keeper`.
+See [docs/SUBGRAPH_MCP.md](../../docs/SUBGRAPH_MCP.md) — Composable foot-in-door is MCP + Receipt Graph, not HCS alone.

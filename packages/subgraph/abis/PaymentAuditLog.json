@@ -1,0 +1,28 @@
+[
+  {
+    "type": "event",
+    "name": "PaymentAudit",
+    "inputs": [
+      { "name": "attemptId", "type": "bytes32", "indexed": true },
+      { "name": "policyId", "type": "bytes32", "indexed": true },
+      { "name": "baseTx", "type": "bytes32", "indexed": false },
+      { "name": "hederaPaymentRef", "type": "string", "indexed": false },
+      { "name": "hcsRef", "type": "string", "indexed": false },
+      { "name": "timestamp", "type": "uint256", "indexed": false }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "function",
+    "name": "recordPaymentAudit",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "attemptId", "type": "bytes32" },
+      { "name": "policyId", "type": "bytes32" },
+      { "name": "baseTx", "type": "bytes32" },
+      { "name": "hederaPaymentRef", "type": "string" },
+      { "name": "hcsRef", "type": "string" }
+    ],
+    "outputs": []
+  }
+]

@@ -5,7 +5,8 @@ import {
   ExecutionReceipt as ExecutionReceiptEvent,
   KillSwitchActivated,
 } from "../generated/GuardianPolicyManager/GuardianPolicyManager";
-import { Policy, ExecutionReceipt, KillSwitch } from "../generated/schema";
+import { PaymentAudit as PaymentAuditEvent } from "../generated/PaymentAuditLog/PaymentAuditLog";
+import { Policy, ExecutionReceipt, KillSwitch, PaymentAudit } from "../generated/schema";
 
 function policyTypeFrom(n: i32): string {
   if (n == 1) return "TAKE_PROFIT";
@@ -79,4 +80,21 @@ export function handleKillSwitchActivated(event: KillSwitchActivated): void {
   ks.policiesRevoked = event.params.policiesRevoked;
   ks.timestamp = event.params.timestamp;
   ks.save();
+}
+
+export function handlePaymentAudit(event: PaymentAuditEvent): void {
+  let id = event.transaction.hash.concatI32(event.logIndex.toI32());
+  let row = new PaymentAudit(id);
+  row.attemptId = event.params.attemptId;
+  row.policyId = event.params.policyId;
+  let policy = Policy.load(event.params.policyId);
+  if (policy != null) {
+    row.policy = policy.id;
+  }
+  row.baseTx = event.params.baseTx;
+  row.hederaPaymentRef = event.params.hederaPaymentRef;
+  row.hcsRef = event.params.hcsRef;
+  row.timestamp = event.params.timestamp;
+  row.txHash = event.transaction.hash;
+  row.save();
 }

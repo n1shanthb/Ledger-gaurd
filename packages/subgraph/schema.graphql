@@ -45,3 +45,16 @@ type KillSwitch @entity(immutable: true) {
   policiesRevoked: BigInt!
   timestamp: BigInt!
 }
+
+""" Hedera x402 / HCS refs linked from Base PaymentAuditLog """
+type PaymentAudit @entity(immutable: true) {
+  id: Bytes!
+  attemptId: Bytes!
+  policy: Policy
+  policyId: Bytes!
+  baseTx: Bytes!
+  hederaPaymentRef: String!
+  hcsRef: String!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
