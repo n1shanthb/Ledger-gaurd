@@ -9,7 +9,7 @@ export const SWAP_EXECUTOR =
 
 export const SUBGRAPH_QUERY_URL =
   process.env.NEXT_PUBLIC_SUBGRAPH_QUERY_URL ??
-  "https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.2";
+  "https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.4";
 
 export const STUDIO_URL =
   "https://thegraph.com/studio/subgraph/ledger-guardian-agent";

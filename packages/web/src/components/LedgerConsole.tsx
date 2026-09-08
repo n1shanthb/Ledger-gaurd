@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { FundGasQr } from "@/components/FundGasQr";
+import { KeeperAgentPanel } from "@/components/KeeperAgentPanel";
 import { PolicyLevelField } from "@/components/PolicyLevelField";
 import { PolicyPriceChart } from "@/components/PolicyPriceChart";
 import { BASE_TOKENS } from "@/lib/abi";
@@ -558,8 +559,8 @@ export function LedgerConsole() {
           </p>
           {watchingFills && !fillNotice && (
             <p className="mt-2 font-mono text-xs text-mute">
-              Waiting for fill… keeper autopolls every ~30s when in band.
-              External agents still pay x402 via <code className="text-paper">npm run pay</code>.
+              Waiting for fill… prize keeper uses paid x402 / pay-on-hit (POLL_MS=0).
+              Dev may still autopoll.
             </p>
           )}
         </div>
@@ -683,6 +684,8 @@ export function LedgerConsole() {
         />
       )}
 
+      <KeeperAgentPanel />
+
       {ledgerAddress && (
         <div className="mt-10 rounded-xl border border-line bg-panel p-4">
           <h3 className="font-display text-lg text-paper">Fast fill prep</h3>
@@ -699,7 +702,8 @@ export function LedgerConsole() {
               Clear-sign — OLED may ask wrap → approve → policy
             </li>
             <li>
-              Run keeper <code className="text-paper">npm run pay</code>
+              Run keeper <code className="text-paper">npm run pay:on-hit</code> or agent
+              tool (x402)
             </li>
           </ol>
           <div className="mt-4 flex flex-wrap gap-2">
