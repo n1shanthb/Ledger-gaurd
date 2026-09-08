@@ -37,7 +37,8 @@ Kill switch on Ledger → all delegation revoked
 | P0 | **Key Ring on headless host** — VPS/keeper with no USB | `ring init` once with device; runtime = `WALLET_PASS` + network only | ✅ |
 | P0 | **DMK hardware signing** — device-backed trust | `packages/hardware-test` — live Base mainnet policy tx | ✅ |
 | P0 | **HITL** — Ledger approves before irreversible delegation | Clear-sign `setGuardianPolicy` + `killSwitch` on OLED | 🟡 policy ✅ / kill ⬜ |
-| P1 | **x402 payment flows** (Ledger prize bullet) | Keeper `/trigger` gated by HBAR (shared with Hedera track) | ⬜ |
+| P1 | **x402 payment flows** (Ledger prize bullet) | Keeper `/trigger` gated by HBAR; `POLL_MS=0` + pay-on-hit | 🟡 |
+| P1 | **OpenRouter agent** via Key Ring | `POST /agent/chat` tools → Graph + paid trigger | 🟡 |
 | P1 | **ERC-7730 clear signing** | `clear-signing/*.erc7730.json` + registry PR | 🟡 |
 | P1 | **DX feedback document** | `docs/LEDGER_DX_FEEDBACK.md` with screenshots + gaps | ⬜ |
 | P2 | Agent Stack usage (DMK + Wallet CLI / Key Ring) | DMK hardware-test + `wallet-cli ring` enroll/decrypt on keeper | ✅ |
@@ -185,9 +186,11 @@ Consumer:   Keeper agent or CLI script using @x402/hedera
 | Resource | URL |
 |---|---|
 | Subgraph Studio | https://thegraph.com/studio/subgraph/ledger-guardian-agent |
-| Query URL | https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.2 |
-| Keeper API | `http://127.0.0.1:3001` (local) / ngrok for demo |
-| Contract (v2) | https://basescan.org/address/0xd3EA42c79a00098E9Fe87A86aF3E9C7bC327a80E |
+| Query URL | https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.4 |
+| Keeper API | Public Railway URL + local `http://127.0.0.1:3001` — **`POLL_MS=0` prize mode** |
+| Contract (GPM buy-dip) | https://basescan.org/address/0xdBf463E260573797Dd1a03B4f45876aad777453b |
+| x402 settle proof | [docs/proofs/x402-settle.md](./proofs/x402-settle.md) |
+| Subgraph MCP | [docs/SUBGRAPH_MCP.md](./SUBGRAPH_MCP.md) |
 | Example policy tx | https://basescan.org/tx/0x6c249efd8f5dcec73b33fc6d155e24f7f53274f2fb167bf8f6eae6d7cc27a7a9 |
 | Kill switch tx | https://basescan.org/tx/0x6a93c38a2278ffa2fbbdc7dbc76c642c6702a5102ff45053faeef55978895b8b |
 
