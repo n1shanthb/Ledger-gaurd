@@ -24,5 +24,8 @@ packages/keeper/secrets.env
 packages/keeper/.env
 packages/keeper/data/
 
+# Turbopack-friendly junction to packages/graph-data/src (created by postinstall)
+packages/web/src/vendor/graph-data
+
 local/
 
