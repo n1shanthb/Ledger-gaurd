@@ -3,6 +3,11 @@ import { fetchActivePolicies } from "../subgraph";
 import { fetchSpotUsd1e8, ETH_USD } from "../pyth";
 import { recentPayments } from "../payments";
 import { postPaidTrigger } from "../paidTrigger";
+import {
+  decideSafestBorrow,
+  decideDeepestWethPool,
+  evaluateSwapGate,
+} from "@lga/graph-data";
 
 type Msg = Record<string, unknown>;
 
@@ -24,6 +29,51 @@ const TOOLS = [
         type: "object",
         properties: { asset: { type: "string", enum: ["eth", "btc"] } },
         required: ["asset"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "compareLendingRisk",
+      description:
+        "Messari fan-out: safest Base borrow by utilization (USDC/WETH). Same decide API as Compose UI.",
+      parameters: {
+        type: "object",
+        properties: {
+          assetSymbol: { type: "string", enum: ["USDC", "WETH"] },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "findDeepestWethPool",
+      description:
+        "Messari DEX fan-out: deepest WETH pool by TVL (Base-first unless crossChain).",
+      parameters: {
+        type: "object",
+        properties: {
+          crossChain: { type: "boolean" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "evaluateSwapGate",
+      description:
+        "Gate a Guardian swap using Messari lending util + WETH pool depth. Call before requestExecutionAttempt.",
+      parameters: {
+        type: "object",
+        properties: {
+          maxUtil: { type: "number" },
+          minPoolTvlUsd: { type: "number" },
+          assetSymbol: { type: "string" },
+          crossChainDex: { type: "boolean" },
+        },
       },
     },
   },
@@ -56,7 +106,7 @@ const TOOLS = [
     function: {
       name: "requestExecutionAttempt",
       description:
-        "Pay Hedera x402 and POST /trigger (Base execute when autopoll off).",
+        "Pay Hedera x402 and POST /trigger (Base execute when autopoll off). Prefer evaluateSwapGate first.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -72,6 +122,14 @@ const TOOLS = [
     },
   },
 ];
+
+function ensureGraphKey(secrets: KeeperSecrets) {
+  const key = secrets.graphApiKey?.trim() || process.env.GRAPH_API_KEY?.trim();
+  if (!key) {
+    throw new Error("GRAPH_API_KEY missing from Key Ring / env");
+  }
+  process.env.GRAPH_API_KEY = key;
+}
 
 async function runTool(
   secrets: KeeperSecrets,
@@ -102,6 +160,74 @@ async function runTool(
       const spot = await fetchSpotUsd1e8(feed);
       return JSON.stringify({ asset, usd: Number(spot) / 1e8 });
     }
+    case "compareLendingRisk": {
+      ensureGraphKey(secrets);
+      const d = await decideSafestBorrow({
+        assetSymbol: String(args.assetSymbol ?? "USDC"),
+        network: "base",
+      });
+      return JSON.stringify({
+        verdict: d.verdict,
+        winner: d.winner
+          ? {
+              protocol: d.winner.protocolSlug,
+              network: d.winner.network,
+              asset: d.winner.assetSymbol,
+              util: d.winner.utilization,
+              tvl: d.winner.totalValueLockedUSD,
+            }
+          : null,
+        runnersUp: d.runnersUp.slice(0, 4).map((m: {
+          protocolSlug: string;
+          network: string;
+          utilization: number | null;
+          totalValueLockedUSD: number;
+        }) => ({
+          protocol: m.protocolSlug,
+          network: m.network,
+          util: m.utilization,
+          tvl: m.totalValueLockedUSD,
+        })),
+        deploymentsOk: d.deploymentsOk,
+      });
+    }
+    case "findDeepestWethPool": {
+      ensureGraphKey(secrets);
+      const d = await decideDeepestWethPool({
+        baseOnly: !Boolean(args.crossChain),
+      });
+      return JSON.stringify({
+        verdict: d.verdict,
+        winner: d.winner
+          ? {
+              pair: d.winner.pairLabel,
+              protocol: d.winner.protocolSlug,
+              network: d.winner.network,
+              tvl: d.winner.totalValueLockedUSD,
+            }
+          : null,
+        deploymentsOk: d.deploymentsOk,
+      });
+    }
+    case "evaluateSwapGate": {
+      ensureGraphKey(secrets);
+      const g = await evaluateSwapGate({
+        maxUtil: typeof args.maxUtil === "number" ? args.maxUtil : undefined,
+        minPoolTvlUsd:
+          typeof args.minPoolTvlUsd === "number"
+            ? args.minPoolTvlUsd
+            : undefined,
+        assetSymbol:
+          typeof args.assetSymbol === "string" ? args.assetSymbol : "USDC",
+        crossChainDex: Boolean(args.crossChainDex),
+      });
+      return JSON.stringify({
+        proceed: g.proceed,
+        reasons: g.reasons,
+        lendingVerdict: g.lending.verdict,
+        dexVerdict: g.dex.verdict,
+      });
+    }
     case "proposeGuardianPolicy":
       return JSON.stringify({
         status: "Awaiting Hardware Signer Approval",
@@ -130,7 +256,7 @@ export async function agentChat(
     {
       role: "system",
       content:
-        "You are LGA Guardian Agent. Use Receipt Graph + Pyth. Propose policies for Ledger clear-sign; never claim you signed. Base execution requires requestExecutionAttempt (Hedera x402). Master key never leaves Ledger; Key Ring holds keeper secrets.",
+        "You are LGA Guardian Agent. Use Receipt Graph + Pyth + Messari fan-out tools. Propose policies for Ledger clear-sign; never claim you signed. Use compareLendingRisk / findDeepestWethPool / evaluateSwapGate before proposing sizeable trades. If evaluateSwapGate says proceed=false, explain and do not call requestExecutionAttempt unless the user explicitly overrides. Base execution requires requestExecutionAttempt (Hedera x402). Master key never leaves Ledger; Key Ring holds keeper secrets.",
     },
     ...userMessages,
   ];

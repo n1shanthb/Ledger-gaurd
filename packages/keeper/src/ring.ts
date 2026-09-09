@@ -183,7 +183,7 @@ export function loadSecrets(): KeeperSecrets {
     );
   }
 
-  // Pyth helpers read process.env — surface keys from ring/env bag
+  // Helpers/packages read process.env — surface keys from ring/env bag
   for (const k of [
     "PYTH_API_KEY",
     "PYTH_PRICE_SERVICE_URL",
@@ -191,6 +191,7 @@ export function loadSecrets(): KeeperSecrets {
     "HCS_TOPIC_ID",
     "PAYMENT_AUDIT_LOG",
     "OPENROUTER_API_KEY",
+    "GRAPH_API_KEY",
   ]) {
     const v = bag[k] ?? process.env[k];
     if (v) process.env[k] = v;

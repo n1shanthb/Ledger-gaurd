@@ -12,6 +12,7 @@
     "pay:on-hit": "node --import tsx src/payOnHit.ts"
   },
   "dependencies": {
+    "@lga/graph-data": "file:../graph-data",
     "@hashgraph/sdk": "^2.81.0",
     "@x402/core": "^2.25.0",
     "@x402/express": "^2.25.0",
