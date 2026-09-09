@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { FundGasQr } from "@/components/FundGasQr";
-import { KeeperAgentPanel } from "@/components/KeeperAgentPanel";
 import { PolicyLevelField } from "@/components/PolicyLevelField";
 import { PolicyPriceChart } from "@/components/PolicyPriceChart";
 import { BASE_TOKENS } from "@/lib/abi";
@@ -476,16 +475,7 @@ export function LedgerConsole() {
   const oledRows = formatOledPreviewRows(form);
 
   return (
-    <section className="mt-16 border-t border-line pt-14">
-      <p className="font-mono text-xs uppercase tracking-[0.24em] text-signal">Ledger</p>
-      <h2 className="mt-3 font-display text-2xl text-paper md:text-3xl">
-        Clear-sign on device
-      </h2>
-      <p className="mt-3 max-w-2xl text-sm text-mute">
-        Step 1 shows full policy details on the OLED. Step 2 signs the Base tx.
-        Master key never leaves Ledger.
-      </p>
-
+    <section className="mt-10">
       {!hidOk && (
         <p className="mt-6 rounded-lg border border-kill/40 bg-kill/10 px-4 py-3 text-sm text-kill">
           WebHID unavailable — use Chrome/Edge on desktop with a USB Ledger.
@@ -683,8 +673,6 @@ export function LedgerConsole() {
           policyType={form.policyType}
         />
       )}
-
-      <KeeperAgentPanel />
 
       {ledgerAddress && (
         <div className="mt-10 rounded-xl border border-line bg-panel p-4">

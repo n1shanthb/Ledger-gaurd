@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ConsoleNav } from "@/components/ConsoleNav";
 import { PoliciesExplorer } from "@/components/PoliciesExplorer";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -19,16 +20,11 @@ export default function PoliciesPage() {
             Policy board
           </h1>
           <p className="mt-4 max-w-2xl text-mute">
-            Active and inactive Guardian policies from Receipt Graph. Select one to
-            see floors / targets against live Pyth on the chart.
+            Active and inactive Guardian policies from Receipt Graph. Select one
+            to see floors / targets against live Pyth on the chart.
           </p>
+          <ConsoleNav />
           <div className="mt-6 flex flex-wrap gap-3 font-mono text-xs text-mute">
-            <Link
-              href="/console"
-              className="rounded-full border border-mist px-3 py-1.5 hover:border-signal hover:text-signal"
-            >
-              ← Console
-            </Link>
             <a
               href={STUDIO_URL}
               target="_blank"
@@ -37,6 +33,12 @@ export default function PoliciesPage() {
             >
               Studio →
             </a>
+            <Link
+              href="/console"
+              className="rounded-full border border-mist px-3 py-1.5 hover:border-paper hover:text-paper"
+            >
+              ← Overview
+            </Link>
           </div>
 
           <PoliciesExplorer />

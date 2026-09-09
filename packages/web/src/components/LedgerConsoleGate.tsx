@@ -7,7 +7,7 @@ const LedgerConsole = dynamic(
   {
     ssr: false,
     loading: () => (
-      <section className="mt-16 border-t border-line pt-14">
+      <section className="mt-10">
         <p className="font-mono text-xs text-mute">Loading Ledger module…</p>
       </section>
     ),

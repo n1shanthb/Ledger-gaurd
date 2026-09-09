@@ -2,8 +2,9 @@ import Link from "next/link";
 
 const links = [
   { href: "/#protocol", label: "Protocol" },
-  { href: "/#pillars", label: "Pillars" },
   { href: "/console", label: "Console" },
+  { href: "/console/ledger", label: "Ledger" },
+  { href: "/console/compose", label: "Compose" },
   { href: "/policies", label: "Policies" },
 ];
 

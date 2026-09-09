@@ -94,16 +94,15 @@ export function KeeperAgentPanel() {
   };
 
   return (
-    <div className="mt-10 space-y-6">
+    <div className="space-y-6">
       <div className="rounded-xl border border-line bg-panel p-4">
-        <p className="font-mono text-xs uppercase tracking-wider text-signal">
-          Keeper agent · OpenRouter via Key Ring
-        </p>
-        <p className="mt-1 font-mono text-[11px] text-mute">{health}</p>
+        <p className="font-mono text-[11px] text-mute">{health}</p>
         <p className="mt-2 text-sm text-mute">
           Agent proposes; Ledger clear-signs policies.{" "}
           <code className="text-paper">requestExecutionAttempt</code> pays Hedera
-          x402 then hits <code className="text-paper">/trigger</code>.
+          x402 then hits <code className="text-paper">/trigger</code>. Prefer{" "}
+          <code className="text-paper">evaluateSwapGate</code> before sizeable
+          trades.
         </p>
         <textarea
           className="mt-3 w-full rounded-lg border border-mist bg-ink/40 px-3 py-2 text-sm text-paper outline-none focus:border-signal"
