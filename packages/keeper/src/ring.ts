@@ -69,6 +69,12 @@ export type KeeperSecrets = {
   hederaAccountId: string;
   openRouterApiKey: string;
   openRouterModel: string;
+  openRouterModels: {
+    coordinator: string;
+    sentinel: string;
+    oracle: string;
+    broker: string;
+  };
   hcsTopicId: string;
   paymentAuditLog: string;
 };
@@ -202,6 +208,7 @@ export function loadSecrets(): KeeperSecrets {
       ? "hedera:mainnet"
       : "hedera:testnet";
   const accountId = get(bag, "HEDERA_ACCOUNT_ID", "");
+  const defaultModel = get(bag, "OPENROUTER_MODEL", "openai/gpt-4o-mini");
 
   return {
     source,
@@ -229,7 +236,17 @@ export function loadSecrets(): KeeperSecrets {
     hederaNetwork,
     hederaAccountId: accountId,
     openRouterApiKey: get(bag, "OPENROUTER_API_KEY", ""),
-    openRouterModel: get(bag, "OPENROUTER_MODEL", "openai/gpt-4o-mini"),
+    openRouterModel: defaultModel,
+    openRouterModels: {
+      coordinator: get(
+        bag,
+        "OPENROUTER_MODEL_COORDINATOR",
+        "openai/gpt-4o-mini",
+      ),
+      sentinel: get(bag, "OPENROUTER_MODEL_SENTINEL", "openai/gpt-4o-mini"),
+      oracle: get(bag, "OPENROUTER_MODEL_ORACLE", defaultModel),
+      broker: get(bag, "OPENROUTER_MODEL_BROKER", defaultModel),
+    },
     hcsTopicId: get(bag, "HCS_TOPIC_ID", ""),
     paymentAuditLog: get(bag, "PAYMENT_AUDIT_LOG", ""),
   };

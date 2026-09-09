@@ -8,10 +8,25 @@ import { hashscanFromPayment } from "./paidTrigger";
 import { submitHcsMemo, hcsHashscanUrl } from "./hcsAudit";
 import { recordOnChainPaymentAudit } from "./paymentAuditTx";
 import { agentChat } from "./agent/chat";
+import type { AgentEvent } from "./agent/types";
 
 const secrets = loadSecrets();
 const app = express();
 app.use(express.json({ limit: "1mb" }));
+
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "content-type, authorization, accept",
+  );
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
 
 let lastPoll: {
   at: number;
@@ -110,6 +125,7 @@ app.get("/health", (_req, res) => {
     keyRing: ringStatus(secrets),
     network: secrets.hederaNetwork,
     openRouter: Boolean(secrets.openRouterApiKey),
+    openRouterModels: secrets.openRouterModels,
     poll: {
       ms: pollMs,
       mode: pollMs > 0 ? "dev_autopoll" : "x402_only",
@@ -146,6 +162,38 @@ app.post("/agent/chat", async (req, res) => {
     res.json(out);
   } catch (err) {
     res.status(500).json({ error: String(err) });
+  }
+});
+
+app.post("/agent/run", async (req, res) => {
+  const messages = (req.body?.messages ?? []) as {
+    role: "user" | "assistant";
+    content: string;
+  }[];
+  if (!messages.length) {
+    res.status(400).json({ error: "messages required" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  const send = (ev: AgentEvent) => {
+    res.write(`data: ${JSON.stringify(ev)}\n\n`);
+  };
+
+  try {
+    await agentChat(secrets, messages, send);
+  } catch (err) {
+    send({
+      type: "error",
+      runId: "err",
+      message: err instanceof Error ? err.message : String(err),
+    });
+  } finally {
+    res.end();
   }
 });
 
