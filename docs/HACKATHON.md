@@ -58,9 +58,15 @@ Kill switch on Ledger → all delegation revoked
 
 ---
 
-## 2. The Graph — Best AI Use Case (From Scratch)
+## 2. The Graph — dual prize surfaces
 
-**Prize pool:** $5,000 · **NOT** the Composable/Standardized track · [Graph prizes](https://ethglobal.com/events/ethonline2026/prizes)
+**AI Use Case (From Scratch)** · $5,000 · Receipt Graph + keeper automation + Subgraph MCP  
+**Composable / Standardized** · $5,000 · Messari decisions + Gateway + Agent0 + ComposeProof  
+
+Select **both** Graph partner prizes on the ETHGlobal form when both bars are met.  
+[Graph prizes](https://ethglobal.com/events/ethonline2026/prizes)
+
+### 2a. Best AI Use Case (From Scratch)
 
 **Correct track:** 🤖 Best AI Tooling or AI Use Case with The Graph **(From Scratch)** — Start Fresh pool.
 
@@ -69,7 +75,7 @@ Kill switch on Ledger → all delegation revoked
 | Requirement | LGA deliverable | Status |
 |---|---|---|
 | Graph is **load-bearing** — agent uses Graph as live blockchain data source | Keeper **automation** driven by Receipt Graph (policies + receipts), not a static UI | 🟡 live Studio + `/policies` |
-| **Live data** from Subgraph Studio (no mocks) | `ledger-guardian-agent` v0.0.1 on Base — query URL below | ✅ |
+| **Live data** from Subgraph Studio (no mocks) | `ledger-guardian-agent` v0.0.4 on Base — query URL below | ✅ |
 | **Meaningful work** — reasoning, decisions, automation | Keeper: query active policies → compare Pyth → decide STOP_LOSS vs TAKE_PROFIT → execute | 🟡 code ready; need active policy for fill |
 | **Subgraph MCP** in keeper/agent flow | `/health` + `/policies` expose Studio URL as MCP target | ✅ |
 | Public repo + README/SKILL | `packages/subgraph/README.md` + root README | ✅ |
@@ -90,13 +96,24 @@ Not “print a GraphQL result.” The keeper **decides** using indexed data:
 }}
 ```
 
-**Subgraph entities:** `Policy`, `ExecutionReceipt`, `KillSwitch`
+**Subgraph entities:** `Policy`, `ExecutionReceipt`, `KillSwitch`, `PaymentAudit`
 
-### Does NOT qualify (avoid)
+### Does NOT qualify for AI Use Case (avoid)
 
 - Mocked / local-only subgraph data
 - Single query with no automation
-- Composable/Messari standardized subgraph track (different prize — we are **AI Use Case**)
+
+### 2b. Best Use of Composable or Standardized Graph Products
+
+| Requirement | LGA deliverable | Status |
+|---|---|---|
+| Standardized schema / Messari | `@lga/graph-data` — one lending + one DEX document fan-out | ✅ |
+| One query → many protocols | Base Aave V3 + Seamless + Compound V3; Uniswap V3 multi-deployment | ✅ |
+| Compose ≥2 Graph products | Messari Gateway + Receipt Graph Studio + Agent0 + Subgraph MCP | ✅ |
+| Live Gateway / Studio (no mocks) | `NEXT_PUBLIC_GRAPH_API_KEY` + Studio URL | 🟡 needs key in env |
+| Standards leverage visible | Console **Compose decisions** + MCP decision prompts | ✅ |
+
+Package: `packages/graph-data`. Docs: [SUBGRAPH_MCP.md](./SUBGRAPH_MCP.md).
 
 ### Optional extra credit
 
@@ -218,6 +235,7 @@ Week 2
 |---|---|---|---|
 | Ledger | AI Agents × Ledger (Start from Scratch) | $3,500 | DMK HITL + Key Ring + kill switch |
 | The Graph | Best AI Use Case (From Scratch) | $5,000 | Receipt Graph + Subgraph MCP + keeper automation |
+| The Graph | Composable / Standardized | $5,000 | Messari decisions + Agent0 + ComposeProof |
 | Hedera | AI & Agentic Payments | $6,000 | x402-gated `/trigger` via Blocky402 |
 
 **Total addressable:** $14,500 across three tracks with one integrated demo.

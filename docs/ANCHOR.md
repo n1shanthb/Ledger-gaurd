@@ -13,7 +13,7 @@
 | **Tagline** | Hardware-bounded delegation for autonomous DeFi exits |
 | **Elevator pitch** | Users clear-sign LP stop-loss and take-profit bounds on a Ledger OLED. A keeper agent discovers policies via The Graph Receipt Graph, pays HBAR through x402 to attempt execution, and every fill is indexed as a compliance receipt. One Ledger tap kills all delegation. Keeper secrets live in Key Ring — never in `.env`. |
 | **Event** | [ETHOnline 2026](https://ethglobal.com/events/ethonline2026) · Sep 4–16, 2026 |
-| **Submission pool** | **Start from Scratch** (net-new) — Ledger + The Graph AI Use Case |
+| **Submission pool** | **Start from Scratch** (net-new) — Ledger + The Graph **AI Use Case** + **Composable** (dual Graph surfaces) |
 | **Repo** | `ledgergaurd` (monorepo) |
 
 **Full prize checklist:** [HACKATHON.md](./HACKATHON.md)
@@ -30,8 +30,9 @@
 | **Key Ring secrets** | Keeper session key + API creds via `wallet-cli ring` | Ledger |
 | **x402 keeper gate** | `POST /trigger` requires HBAR via Blocky402 | Hedera + Ledger |
 | **Kill switch** | Ledger-signed revoke all policies + session keys | Ledger |
-| **Receipt Graph** | Live Subgraph — policies + compliance receipts | The Graph |
+| **Receipt Graph** | Live Subgraph — policies + compliance receipts | The Graph (AI Use Case) |
 | **Subgraph MCP** | Keeper/agent queries policies in natural language | The Graph |
+| **Messari fan-out** | One query → N protocols → risk/liquidity decision (`@lga/graph-data`) | The Graph (Composable) |
 
 ---
 
@@ -51,7 +52,11 @@
 
 ### The Graph — Best AI Use Case (From Scratch) · $5,000
 
-**Not** the Composable/Standardized Subgraphs track.
+Custom **Receipt Graph** is load-bearing for keeper decisions (policies → Pyth → execute). Subgraph MCP queries the same Studio endpoint.
+
+### The Graph — Composable / Standardized · $5,000
+
+**Standards leverage:** Messari Lending + DEX via `decideSafestBorrow` / `decideDeepestWethPool` / `evaluateSwapGate` (one document → N deployments → a call). Composed with Receipt Graph + Agent0 + Subgraph MCP. See `packages/graph-data` and console **Compose decisions**.
 
 | Must demonstrate | LGA implementation |
 |---|---|
@@ -59,6 +64,7 @@
 | **Subgraph Studio** live data (no mocks) | Deploy `ledger-guardian-agent` on Base |
 | **Meaningful automation** — decisions, not raw print | Trigger evaluation: policy params + Pyth → execute |
 | **Subgraph MCP** | Keeper or demo agent queries via MCP |
+| Messari / standardized one-query-N | `@lga/graph-data` decide + fan-out |
 | Demo video 2–4 min | Unified submission video |
 
 ### Hedera — AI & Agentic Payments · $6,000 (3 × $2K)
