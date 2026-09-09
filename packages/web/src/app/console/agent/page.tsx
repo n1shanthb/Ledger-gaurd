@@ -3,6 +3,8 @@ import { KeeperAgentPanel } from "@/components/KeeperAgentPanel";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
+export const dynamic = "force-dynamic";
+
 export default function AgentPage() {
   return (
     <>
@@ -13,12 +15,12 @@ export default function AgentPage() {
             Agent
           </p>
           <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-paper md:text-5xl">
-            Keeper agent
+            Multi-agent ops
           </h1>
           <p className="mt-4 max-w-2xl text-mute">
-            OpenRouter via Key Ring. Messari gate tools before x402{" "}
-            <code className="text-paper">/trigger</code>. Policies still
-            clear-sign on Ledger.
+            Coordinator routes to Policy Sentinel, Market Oracle, and Execution
+            Broker. Live graph is driven by SSE tool events — same decide/gate
+            APIs as Compose.
           </p>
           <ConsoleNav />
           <div className="mt-10">

@@ -3,6 +3,8 @@ import { ConsoleNav } from "@/components/ConsoleNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
+export const dynamic = "force-dynamic";
+
 export default function ComposePage() {
   return (
     <>

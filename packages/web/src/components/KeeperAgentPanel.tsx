@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-
-const keeperBase =
-  process.env.NEXT_PUBLIC_KEEPER_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:3001";
+import { AgentOpsGraph } from "@/components/AgentOpsGraph";
+import { useAgentRun } from "@/hooks/useAgentRun";
 
 type Payment = {
   attemptId: string;
@@ -18,13 +17,10 @@ type Payment = {
 };
 
 export function KeeperAgentPanel() {
+  const { graph, busy, err, run, reset, keeperBase } = useAgentRun();
   const [input, setInput] = useState(
-    "List active policies and ETH Pyth spot. Propose a tight buy-dip if useful.",
+    "Should I execute? Check policies and swap gate first.",
   );
-  const [reply, setReply] = useState<string>("");
-  const [trace, setTrace] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [health, setHealth] = useState<string>("…");
 
@@ -36,10 +32,10 @@ export function KeeperAgentPanel() {
       if (!res.ok) throw new Error(`payments ${res.status}`);
       const j = (await res.json()) as { payments: Payment[] };
       setPayments(j.payments ?? []);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+    } catch {
+      /* health line covers unreachable */
     }
-  }, []);
+  }, [keeperBase]);
 
   const refreshHealth = useCallback(async () => {
     try {
@@ -47,14 +43,20 @@ export function KeeperAgentPanel() {
       const j = (await res.json()) as {
         poll?: { mode?: string; ms?: number };
         openRouter?: boolean;
+        openRouterModels?: Record<string, string>;
       };
+      const models = j.openRouterModels
+        ? ` · ${Object.values(j.openRouterModels)
+            .map((m) => m.split("/").pop())
+            .join("/")}`
+        : "";
       setHealth(
-        `${j.poll?.mode ?? "?"} · openRouter=${j.openRouter ? "yes" : "no"} · ${keeperBase}`,
+        `${j.poll?.mode ?? "?"} · openRouter=${j.openRouter ? "yes" : "no"}${models}`,
       );
     } catch {
       setHealth(`unreachable · ${keeperBase}`);
     }
-  }, []);
+  }, [keeperBase]);
 
   useEffect(() => {
     void refreshHealth();
@@ -67,66 +69,70 @@ export function KeeperAgentPanel() {
   }, [refreshHealth, refreshPayments]);
 
   const ask = async () => {
-    setBusy(true);
-    setErr(null);
-    try {
-      const res = await fetch(`${keeperBase}/agent/chat`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: input }],
-        }),
-      });
-      const j = (await res.json()) as {
-        reply?: string;
-        toolTrace?: string[];
-        error?: string;
-      };
-      if (!res.ok) throw new Error(j.error ?? `agent ${res.status}`);
-      setReply(j.reply ?? "");
-      setTrace(j.toolTrace ?? []);
-      void refreshPayments();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
+    await run(input);
+    void refreshPayments();
   };
 
   return (
     <div className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <AgentOpsGraph graph={graph} />
+        <div className="rounded-xl border border-line bg-panel p-4">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-mute">
+            Event log
+          </p>
+          <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto font-mono text-[11px] text-mute">
+            {graph.log.length === 0 && (
+              <li>Idle — ask something to start the pipeline.</li>
+            )}
+            {graph.log.map((l) => (
+              <li key={`${l.t}-${l.line}`}>
+                <span className="text-paper/50">
+                  {new Date(l.t).toLocaleTimeString()}
+                </span>{" "}
+                {l.line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
       <div className="rounded-xl border border-line bg-panel p-4">
         <p className="font-mono text-[11px] text-mute">{health}</p>
         <p className="mt-2 text-sm text-mute">
-          Agent proposes; Ledger clear-signs policies.{" "}
-          <code className="text-paper">requestExecutionAttempt</code> pays Hedera
-          x402 then hits <code className="text-paper">/trigger</code>. Prefer{" "}
-          <code className="text-paper">evaluateSwapGate</code> before sizeable
-          trades.
+          Coordinator → Sentinel / Oracle / Broker. One OpenRouter key, per-agent
+          models. Viz animates only from SSE events — not mock loops. Master key
+          never leaves Ledger; Key Ring holds keeper secrets.
         </p>
         <textarea
           className="mt-3 w-full rounded-lg border border-mist bg-ink/40 px-3 py-2 text-sm text-paper outline-none focus:border-signal"
           rows={3}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-        />
-        <button
-          type="button"
           disabled={busy}
-          onClick={() => void ask()}
-          className="mt-2 rounded-full bg-signal px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
-        >
-          {busy ? "Thinking…" : "Ask agent"}
-        </button>
+        />
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy || !input.trim()}
+            onClick={() => void ask()}
+            className="rounded-full bg-signal px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
+          >
+            {busy ? "Running pipeline…" : "Run agents"}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => reset()}
+            className="rounded-full border border-mist px-4 py-2 text-sm text-mute hover:text-paper"
+          >
+            Reset graph
+          </button>
+        </div>
         {err && <p className="mt-2 text-sm text-kill">{err}</p>}
-        {trace.length > 0 && (
-          <p className="mt-2 font-mono text-[11px] text-mute">
-            tools: {trace.join(" → ")}
-          </p>
-        )}
-        {reply && (
+        {graph.reply && (
           <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-line bg-ink/50 p-3 text-sm text-paper">
-            {reply}
+            {graph.reply}
           </pre>
         )}
       </div>
@@ -146,7 +152,7 @@ export function KeeperAgentPanel() {
         </div>
         {payments.length === 0 && (
           <p className="mt-3 text-sm text-mute">
-            No attempts yet. Use pay-on-hit, npm run pay, or agent tool.
+            No attempts yet. Broker tool or npm run pay.
           </p>
         )}
         <ul className="mt-3 space-y-3">

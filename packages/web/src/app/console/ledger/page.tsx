@@ -3,6 +3,8 @@ import { LedgerConsoleGate } from "@/components/LedgerConsoleGate";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
+export const dynamic = "force-dynamic";
+
 export default function LedgerConsolePage() {
   return (
     <>
