@@ -30,7 +30,8 @@ WALLET_PASS=… POLL_MS=0 npm start
 | `GET /health` | open | ring + poll mode |
 | `GET /policies` | open | Studio policies + MCP hint |
 | `GET /payments/recent` | open | x402 attempt audit |
-| `POST /agent/chat` | open | OpenRouter tools (key from ring) |
+| `POST /agent/chat` | open | Multi-agent JSON (Coordinator→specialists) |
+| `POST /agent/run` | open | Same pipeline as SSE (`text/event-stream`) |
 | `POST /quote` | x402 (cheap) | Graph+Pyth eval, no execute |
 | `POST /trigger` | x402 | full execute attempt |
 
@@ -53,12 +54,34 @@ Settlement proof template: [docs/proofs/x402-settle.md](../../docs/proofs/x402-s
 
 **What is sold:** metered execution attempt (~0.001 HBAR `/trigger`; cheaper `/quote`).
 
-## OpenRouter agent
+## OpenRouter multi-agent (Phase 2)
 
-`POST /agent/chat` body: `{ "messages": [{ "role": "user", "content": "…" }] }`
+One Key Ring key (`OPENROUTER_API_KEY`), per-agent models:
 
-Tools: `listActivePolicies`, `getPythSpot`, `proposeGuardianPolicy`, `requestExecutionAttempt` (paid `/trigger`), `getRecentPayments`.
+| Agent | Env | Default role |
+|---|---|---|
+| Coordinator | `OPENROUTER_MODEL_COORDINATOR` | classify pipeline (no tools) |
+| Sentinel | `OPENROUTER_MODEL_SENTINEL` | Receipt Graph policies |
+| Oracle | `OPENROUTER_MODEL_ORACLE` | Pyth + Messari decide/gate |
+| Broker | `OPENROUTER_MODEL_BROKER` | propose / x402 `/trigger` |
 
+Fallback: `OPENROUTER_MODEL` → `openai/gpt-4o-mini`.
+
+```bash
+# JSON
+curl -s -X POST http://127.0.0.1:3001/agent/chat \
+  -H 'content-type: application/json' \
+  -d '{"messages":[{"role":"user","content":"Should I execute?"}]}'
+
+# SSE (live ops graph)
+curl -N -X POST http://127.0.0.1:3001/agent/run \
+  -H 'content-type: application/json' -H 'accept: text/event-stream' \
+  -d '{"messages":[{"role":"user","content":"Should I execute?"}]}'
+```
+
+Events: `run_start` → `agent_start` / `tool_*` / `edge` / `gate` → `run_end`. UI on `/console/agent` animates **only** from these frames.
+
+Gate: Broker cannot `requestExecutionAttempt` if Oracle gate `proceed=false` unless user explicitly overrides.
 ## HCS + PaymentAudit (Graph)
 
 - Optional `HCS_TOPIC_ID` in ring → memo after settle.

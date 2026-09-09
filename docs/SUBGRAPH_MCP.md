@@ -56,12 +56,20 @@ Run the same Messari liquidityPools query (orderBy totalValueLockedUSD) across U
 Compose Guardian context: active Receipt Graph policies + Messari decisions (borrow risk + WETH depth) + evaluateSwapGate.
 ```
 
+## Phase 2 agents (events drive UI)
+
+Coordinator → **Policy Sentinel** (Receipt Graph) → **Market Oracle** (Messari/Pyth gate) → **Execution Broker** (x402).
+
+- Keeper: `POST /agent/run` streams `AgentEvent` SSE; `/console/agent` graph only animates from those events.
+- Same decide/gate documents as Compose — no mock animation loops.
+- One OpenRouter key; per-agent models via `OPENROUTER_MODEL_*` in Key Ring.
+
 ## Demo script (≤3 min)
 
-1. Open console → **Compose** workspace (verdicts + gate strip; matrix per protocol).  
-2. Point Subgraph MCP at Studio URL; ask for active policies.  
-3. Ask MCP / agent: “Safest Base USDC borrow…” then “would you gate a Guardian swap?”  
-4. Pitch: *“One Messari query → risk + liquidity decision → Ledger/x402 path.”*
+1. Open console → **Compose** (verdicts + gate).  
+2. Open **Agent** → ask “Should I execute?” → watch Sentinel→Oracle→Broker light from SSE.  
+3. Point Subgraph MCP at Studio; ask for active policies.  
+4. Pitch: *“One Messari query → risk + liquidity decision → Ledger/x402 path.”*  
 
 ## Receipt Graph example
 

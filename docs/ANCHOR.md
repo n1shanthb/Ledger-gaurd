@@ -33,6 +33,7 @@
 | **Receipt Graph** | Live Subgraph — policies + compliance receipts | The Graph (AI Use Case) |
 | **Subgraph MCP** | Keeper/agent queries policies in natural language | The Graph |
 | **Messari fan-out** | One query → N protocols → risk/liquidity decision (`@lga/graph-data`) | The Graph (Composable) |
+| **Phase 2 agents** | Coordinator → Sentinel / Oracle / Broker; SSE drives Agent ops UI | Graph + Hedera + Ledger |
 
 ---
 
@@ -121,7 +122,7 @@ packages/
 ├── hardware-test/    DMK + Ledger clear-sign (live Base mainnet)
 ├── contracts/        GuardianPolicyManager, SessionKeyValidator, SwapExecutor
 ├── subgraph/         Receipt Graph → Subgraph Studio (Base)
-├── keeper/           Subgraph MCP + Pyth + x402 /trigger + Key Ring secrets
+├── keeper/           Subgraph MCP + Pyth + x402 + Phase 2 multi-agent (SSE)
 └── clear-signing/    ERC-7730 descriptors
 ```
 
