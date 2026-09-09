@@ -28,12 +28,15 @@ export async function decideSafestBorrow(opts?: {
   /** Network for the primary verdict (default base). */
   network?: "base" | "ethereum" | "optimism" | "arbitrum";
   first?: number;
+  snappy?: boolean;
 }): Promise<BorrowDecision> {
   const asset = opts?.assetSymbol ?? "USDC";
   const focusNet = opts?.network ?? "base";
+  const snappy = opts?.snappy ?? false;
   const { markets, failed, deploymentsOk } = await compareLendingMarkets({
-    first: opts?.first ?? 25,
+    first: opts?.first ?? (snappy ? 12 : 25),
     baseOnly: false,
+    snappy,
   });
 
   const matched = markets.filter(

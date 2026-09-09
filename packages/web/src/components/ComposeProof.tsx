@@ -41,16 +41,28 @@ export function ComposeProof() {
         </p>
       )}
 
-      {q.isError && !missingKey && (
-        <p className="mt-3 text-sm text-red-300">
-          {q.error instanceof Error ? q.error.message : "gateway error"}
-        </p>
-      )}
-
       {q.isLoading && (
         <p className="mt-3 text-sm text-mute">
-          Computing Base borrow + WETH depth (cached ~45s)…
+          Fan-out Messari lending + DEX (first load can take ~15–30s; then
+          cached)…
         </p>
+      )}
+      {q.isFetching && !q.isLoading && (
+        <p className="mt-3 text-sm text-mute">Refreshing…</p>
+      )}
+      {q.isError && !missingKey && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-red-300">
+            {q.error instanceof Error ? q.error.message : "gateway error"}
+          </p>
+          <button
+            type="button"
+            onClick={() => void q.refetch()}
+            className="rounded-full border border-mist px-3 py-1 text-xs text-signal hover:border-signal"
+          >
+            Retry
+          </button>
+        </div>
       )}
 
       {gate && (

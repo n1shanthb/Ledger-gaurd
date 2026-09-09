@@ -8,10 +8,12 @@ import {
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 type CacheEntry = { at: number; body: unknown };
 const cache = new Map<string, CacheEntry>();
-const TTL_MS = 45_000;
+const inflight = new Map<string, Promise<unknown>>();
+const TTL_MS = 60_000;
 
 function ensureKey() {
   const key =
@@ -39,6 +41,23 @@ function put(key: string, body: unknown) {
   cache.set(key, { at: Date.now(), body });
 }
 
+async function once<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const warm = cached(key);
+  if (warm) return warm as T;
+  const pending = inflight.get(key);
+  if (pending) return pending as Promise<T>;
+  const p = run()
+    .then((body) => {
+      put(key, body);
+      return body;
+    })
+    .finally(() => {
+      inflight.delete(key);
+    });
+  inflight.set(key, p);
+  return p;
+}
+
 export async function GET(req: Request) {
   try {
     ensureKey();
@@ -48,56 +67,55 @@ export async function GET(req: Request) {
     const crossChain = url.searchParams.get("crossChain") === "1";
     const cacheKey = `${resource}:${first}:${crossChain ? 1 : 0}`;
 
-    const warm = cached(cacheKey);
-    if (warm) {
-      return NextResponse.json(warm, {
-        headers: { "x-lga-cache": "hit" },
-      });
-    }
-
     if (resource === "lending") {
-      const data = await compareLendingMarkets({ first, baseOnly: false });
-      put(cacheKey, data);
-      return NextResponse.json(data);
+      const data = await once(cacheKey, () =>
+        compareLendingMarkets({ first, baseOnly: false, snappy: true }),
+      );
+      return NextResponse.json(data, {
+        headers: { "x-lga-cache": cached(cacheKey) ? "hit" : "miss" },
+      });
     }
     if (resource === "dex") {
-      const data = await compareDexPools({
-        first,
-        baseOnly: !crossChain,
-      });
-      put(cacheKey, data);
+      const data = await once(cacheKey, () =>
+        compareDexPools({
+          first,
+          baseOnly: !crossChain,
+          snappy: true,
+        }),
+      );
       return NextResponse.json(data);
     }
     if (resource === "agent0") {
-      const data = await fetchAgent0Registry({ first });
-      put(cacheKey, data);
+      const data = await once(cacheKey, () => fetchAgent0Registry({ first }));
       return NextResponse.json(data);
     }
     if (resource === "decisions") {
-      // Single evaluateSwapGate call (embeds lending + dex) — avoids 2× Gateway load.
-      const gate = await evaluateSwapGate({
-        crossChainDex: crossChain,
-        assetSymbol: "USDC",
+      const body = await once(cacheKey, async () => {
+        const gate = await evaluateSwapGate({
+          crossChainDex: crossChain,
+          assetSymbol: "USDC",
+          snappy: true,
+        });
+        return {
+          lending: gate.lending,
+          dex: gate.dex,
+          gate,
+          note: "Messari Base Aave offline · ETH/ARB Aave + Base Compound/Seamless",
+        };
       });
-      const body = {
-        lending: gate.lending,
-        dex: gate.dex,
-        gate,
-        note: "Messari Base Aave offline · ETH/ARB Aave + Base Compound/Seamless",
-      };
-      put(cacheKey, body);
       return NextResponse.json(body, {
-        headers: { "x-lga-cache": "miss" },
+        headers: { "x-lga-cache": "ok" },
       });
     }
 
-    const [lending, dex, agent0] = await Promise.all([
-      compareLendingMarkets({ first, baseOnly: false }),
-      compareDexPools({ first, baseOnly: !crossChain }),
-      fetchAgent0Registry({ first: Math.min(first, 10) }),
-    ]);
-    const body = { lending, dex, agent0 };
-    put(cacheKey, body);
+    const body = await once(cacheKey, async () => {
+      const [lending, dex, agent0] = await Promise.all([
+        compareLendingMarkets({ first, baseOnly: false, snappy: true }),
+        compareDexPools({ first, baseOnly: !crossChain, snappy: true }),
+        fetchAgent0Registry({ first: Math.min(first, 10) }),
+      ]);
+      return { lending, dex, agent0 };
+    });
     return NextResponse.json(body);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

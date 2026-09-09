@@ -23,6 +23,16 @@ export type ComposeDecisionsPayload = {
   note?: string;
 };
 
+function friendlyErr(e: unknown): Error {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/signal timed out|aborted|TimeoutError|timeout/i.test(msg)) {
+    return new Error(
+      "Graph Gateway slow — retry in a few seconds (results cache ~60s).",
+    );
+  }
+  return e instanceof Error ? e : new Error(msg);
+}
+
 async function gatewayGet<T>(
   resource: string,
   first: number,
@@ -33,22 +43,27 @@ async function gatewayGet<T>(
     first: String(first),
   });
   if (crossChain) qs.set("crossChain", "1");
-  const res = await fetch(`/api/gateway?${qs}`, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(45_000),
-  });
-  const json = (await res.json()) as T & { error?: string };
-  if (!res.ok) {
-    throw new Error(
-      typeof json.error === "string" ? json.error : `gateway ${res.status}`,
-    );
+  try {
+    const res = await fetch(`/api/gateway?${qs}`, {
+      cache: "no-store",
+      // Cold Messari fan-out can take ~20–40s; cache makes later hits fast.
+      signal: AbortSignal.timeout(resource === "decisions" ? 90_000 : 60_000),
+    });
+    const json = (await res.json()) as T & { error?: string };
+    if (!res.ok) {
+      throw new Error(
+        typeof json.error === "string" ? json.error : `gateway ${res.status}`,
+      );
+    }
+    if (typeof (json as { error?: unknown }).error === "string") {
+      const msg = (json as { error: string }).error;
+      if (resource === "agent0") return json;
+      throw new Error(msg);
+    }
+    return json;
+  } catch (e) {
+    throw friendlyErr(e);
   }
-  if (typeof (json as { error?: unknown }).error === "string") {
-    const msg = (json as { error: string }).error;
-    if (resource === "agent0") return json;
-    throw new Error(msg);
-  }
-  return json;
 }
 
 export function useComposeDecisions(opts?: {
@@ -60,7 +75,9 @@ export function useComposeDecisions(opts?: {
     queryFn: () =>
       gatewayGet<ComposeDecisionsPayload>("decisions", 8, opts?.crossChain),
     enabled: opts?.enabled ?? true,
-    staleTime: 40_000,
+    staleTime: 55_000,
+    retry: 1,
+    retryDelay: 2_500,
   });
 }
 

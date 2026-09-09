@@ -15,18 +15,24 @@ export async function evaluateSwapGate(opts?: {
   maxUtil?: number;
   minPoolTvlUsd?: number;
   assetSymbol?: string;
-  /** When true, deepest pool uses full cross-chain DEX fan-out. */
+  /** When true, deepest pool includes Optimism too (slower). */
   crossChainDex?: boolean;
+  snappy?: boolean;
 }): Promise<SwapGateResult> {
   const maxUtil = opts?.maxUtil ?? 0.9;
   const minPoolTvlUsd = opts?.minPoolTvlUsd ?? 100_000;
+  const snappy = opts?.snappy ?? true;
 
   const [lending, dex] = await Promise.all([
     decideSafestBorrow({
       assetSymbol: opts?.assetSymbol ?? "USDC",
       network: "base",
+      snappy,
     }),
-    decideDeepestWethPool({ baseOnly: !opts?.crossChainDex }),
+    decideDeepestWethPool({
+      baseOnly: !opts?.crossChainDex,
+      snappy: opts?.crossChainDex ? false : snappy,
+    }),
   ]);
 
   const reasons: string[] = [];

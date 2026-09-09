@@ -27,20 +27,24 @@ function rankWeth(pools: DexPoolRow[]): DexPoolRow[] {
 
 /**
  * Deepest WETH major pool by TVL.
- * baseOnly prefers a Base winner when present; still fans out OP/ARB in parallel
- * so Messari Base junk-TVL doesn't blank the demo.
+ * Default snappy path: Base + Arbitrum (skip Optimism — often stalls Gateway).
  */
 export async function decideDeepestWethPool(opts?: {
   baseOnly?: boolean;
   first?: number;
+  snappy?: boolean;
 }): Promise<DexDecision> {
   const preferBase = opts?.baseOnly ?? true;
-  const first = opts?.first ?? 8;
+  const snappy = opts?.snappy ?? true;
+  // OP Messari Uni is the usual timeout culprit — only include when not snappy.
+  const networks = snappy
+    ? (["base", "arbitrum"] as const)
+    : (["base", "optimism", "arbitrum"] as const);
 
-  // Parallel fan-out (Base+OP+ARB) — sequential Base-then-fallback was ~2× Gateway time.
   const { pools, failed, deploymentsOk } = await compareDexPools({
-    first,
-    baseOnly: false,
+    first: opts?.first ?? (snappy ? 5 : 8),
+    networks: [...networks],
+    snappy,
   });
 
   const ranked = rankWeth(pools);
