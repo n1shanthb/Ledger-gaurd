@@ -9,7 +9,7 @@
     "ring:enroll": "node --import tsx src/enroll.ts",
     "complete-account": "node --import tsx src/completeAccount.ts",
     "pay": "node --import tsx src/pay.ts",
-    "pay:on-hit": "node --import tsx src/payOnHit.ts"
+    "pay:on-hit": "node --import tsx src/runPayOnHit.ts"
   },
   "dependencies": {
     "@lga/graph-data": "file:../graph-data",

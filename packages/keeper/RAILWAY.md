@@ -29,13 +29,21 @@ POLL_MS=0
 5. Generate a **public URL** (required for x402 + pay-on-hit).
 6. Hit `https://<service>.up.railway.app/health` → expect `keyRing.headless=true`, `poll.mode: "x402_only"`.
 
-### Pay-on-hit worker (second process)
+### Pay-on-hit (same service — saves credit)
 
-Public server never free-executes. Run watcher elsewhere:
+Set `PAY_ON_HIT=1` (default in Dockerfile). One container watches Pyth and pays `/trigger` when a band hits — no second Railway service.
+
+```text
+PAY_ON_HIT=1
+WATCH_MS=30000
+POLL_MS=0
+```
+
+Optional local-only watcher (laptop):
 
 ```powershell
 $env:WALLET_PASS = "…"
-$env:KEEPER_URL = "https://<service>.up.railway.app"
+$env:KEEPER_URL = "https://lga-keeper-production.up.railway.app"
 cd packages/keeper
 npm run pay:on-hit
 ```
