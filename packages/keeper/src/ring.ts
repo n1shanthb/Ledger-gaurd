@@ -12,6 +12,17 @@ function resolveWalletCliJs(): string | null {
   if (process.env.WALLET_CLI_BIN && existsSync(process.env.WALLET_CLI_BIN)) {
     return process.env.WALLET_CLI_BIN;
   }
+  const local = resolve(
+    import.meta.dirname,
+    "..",
+    "node_modules",
+    "@ledgerhq",
+    "wallet-cli",
+    "bin",
+    "wallet-cli",
+  );
+  if (existsSync(local)) return local;
+
   for (const dir of (process.env.PATH ?? "").split(delimiter)) {
     if (!dir) continue;
     const nested = resolve(dir, "node_modules", "@ledgerhq", "wallet-cli", "bin", "wallet-cli");
@@ -22,15 +33,19 @@ function resolveWalletCliJs(): string | null {
       if (existsSync(fromShim)) return fromShim;
     }
   }
-  // npm global default (Windows / Unix)
+  // npm global default (Windows / Unix / Docker)
   const home = process.env.APPDATA ?? process.env.HOME;
+  const candidates = [
+    "/usr/local/lib/node_modules/@ledgerhq/wallet-cli/bin/wallet-cli",
+    "/usr/lib/node_modules/@ledgerhq/wallet-cli/bin/wallet-cli",
+  ];
   if (home) {
-    const candidates = [
+    candidates.push(
       resolve(home, "npm", "node_modules", "@ledgerhq", "wallet-cli", "bin", "wallet-cli"),
       resolve(home, ".npm-global", "lib", "node_modules", "@ledgerhq", "wallet-cli", "bin", "wallet-cli"),
-    ];
-    for (const c of candidates) if (existsSync(c)) return c;
+    );
   }
+  for (const c of candidates) if (existsSync(c)) return c;
   return null;
 }
 

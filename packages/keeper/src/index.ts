@@ -9,6 +9,7 @@ import { submitHcsMemo, hcsHashscanUrl } from "./hcsAudit";
 import { recordOnChainPaymentAudit } from "./paymentAuditTx";
 import { agentChat } from "./agent/chat";
 import type { AgentEvent } from "./agent/types";
+import { startPayOnHit } from "./payOnHit";
 
 const secrets = loadSecrets();
 const app = express();
@@ -232,6 +233,10 @@ app.listen(port, () => {
     void pollOnce();
     setInterval(() => void pollOnce(), pollMs);
   } else {
-    console.log("[lga] autopoll off — execution only via paid POST /trigger (or npm run pay:on-hit)");
+    console.log("[lga] autopoll off — execution only via paid POST /trigger (or pay-on-hit)");
+  }
+  // Same process watcher — one Railway service, stretches free credit
+  if (process.env.PAY_ON_HIT === "1" || process.env.PAY_ON_HIT === "true") {
+    startPayOnHit(secrets);
   }
 });
