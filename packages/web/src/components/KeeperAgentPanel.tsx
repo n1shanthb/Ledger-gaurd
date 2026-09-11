@@ -74,14 +74,55 @@ export function KeeperAgentPanel() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <AgentOpsGraph graph={graph} />
+    <div className="space-y-5">
+      <AgentOpsGraph graph={graph} />
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="rounded-xl border border-line bg-panel p-4">
+          <p className="font-mono text-[11px] text-mute">{health}</p>
+          <p className="mt-2 text-sm text-mute">
+            Coordinator → Sentinel / Oracle / Broker. One OpenRouter key, per-agent
+            models. Viz animates only from SSE events — not mock loops. Master key
+            never leaves Ledger; Key Ring holds keeper secrets.
+          </p>
+          <textarea
+            className="mt-3 w-full rounded-lg border border-mist bg-ink/40 px-3 py-2 text-sm text-paper outline-none focus:border-signal"
+            rows={3}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={busy}
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy || !input.trim()}
+              onClick={() => void ask()}
+              className="rounded-full bg-signal px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
+            >
+              {busy ? "Running pipeline…" : "Run agents"}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => reset()}
+              className="rounded-full border border-mist px-4 py-2 text-sm text-mute hover:text-paper"
+            >
+              Reset graph
+            </button>
+          </div>
+          {err && <p className="mt-2 text-sm text-kill">{err}</p>}
+          {graph.reply && (
+            <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-line bg-ink/50 p-3 text-sm text-paper">
+              {graph.reply}
+            </pre>
+          )}
+        </div>
+
         <div className="rounded-xl border border-line bg-panel p-4">
           <p className="font-mono text-[10px] uppercase tracking-wider text-mute">
             Event log
           </p>
-          <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto font-mono text-[11px] text-mute">
+          <ul className="mt-2 max-h-72 space-y-1 overflow-y-auto font-mono text-[11px] text-mute xl:max-h-[22rem]">
             {graph.log.length === 0 && (
               <li>Idle — ask something to start the pipeline.</li>
             )}
@@ -95,46 +136,6 @@ export function KeeperAgentPanel() {
             ))}
           </ul>
         </div>
-      </div>
-
-      <div className="rounded-xl border border-line bg-panel p-4">
-        <p className="font-mono text-[11px] text-mute">{health}</p>
-        <p className="mt-2 text-sm text-mute">
-          Coordinator → Sentinel / Oracle / Broker. One OpenRouter key, per-agent
-          models. Viz animates only from SSE events — not mock loops. Master key
-          never leaves Ledger; Key Ring holds keeper secrets.
-        </p>
-        <textarea
-          className="mt-3 w-full rounded-lg border border-mist bg-ink/40 px-3 py-2 text-sm text-paper outline-none focus:border-signal"
-          rows={3}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={busy}
-        />
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={busy || !input.trim()}
-            onClick={() => void ask()}
-            className="rounded-full bg-signal px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
-          >
-            {busy ? "Running pipeline…" : "Run agents"}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => reset()}
-            className="rounded-full border border-mist px-4 py-2 text-sm text-mute hover:text-paper"
-          >
-            Reset graph
-          </button>
-        </div>
-        {err && <p className="mt-2 text-sm text-kill">{err}</p>}
-        {graph.reply && (
-          <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-line bg-ink/50 p-3 text-sm text-paper">
-            {graph.reply}
-          </pre>
-        )}
       </div>
 
       <div className="rounded-xl border border-line bg-panel p-4">

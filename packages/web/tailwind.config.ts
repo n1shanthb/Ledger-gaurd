@@ -17,6 +17,10 @@ export default {
         signal: "#b8f000",
         kill: "#ff5c4d",
         mist: "#2a2d33",
+        "agent-graph": "#00ff88",
+        "agent-oracle": "#a855f7",
+        "agent-broker": "#ff9900",
+        "agent-hub": "#00f3ff",
       },
       fontFamily: {
         display: ["var(--font-display)", "system-ui", "sans-serif"],

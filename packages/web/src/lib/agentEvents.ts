@@ -27,8 +27,15 @@ export type AgentEvent =
 
 export type NodeState = "idle" | "active" | "tool" | "done" | "error";
 
+export type GraphNode = {
+  state: NodeState;
+  model?: string;
+  last?: string;
+  activeTool?: string;
+};
+
 export type GraphState = {
-  nodes: Record<AgentId, { state: NodeState; model?: string; last?: string }>;
+  nodes: Record<AgentId, GraphNode>;
   edges: {
     from: AgentId;
     to: AgentId;
@@ -83,6 +90,7 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
         state: "active",
         model: ev.model,
         last: prev.nodes[ev.agent]?.last,
+        activeTool: undefined,
       };
       push(`${ev.agent} · ${ev.model}`);
       break;
@@ -99,6 +107,7 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
         ...next.nodes[ev.agent],
         state: "tool",
         last: ev.tool,
+        activeTool: ev.tool,
       };
       next.edges = next.edges.map((e) =>
         e.to === ev.agent || e.from === ev.agent
@@ -112,6 +121,7 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
         ...next.nodes[ev.agent],
         state: "active",
         last: ev.summary ?? ev.tool,
+        activeTool: undefined,
       };
       next.edges = next.edges.map((e) =>
         e.label === ev.tool ? { ...e, live: false } : e,
@@ -135,6 +145,7 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
       next.nodes[ev.agent] = {
         ...next.nodes[ev.agent],
         state: "done",
+        activeTool: undefined,
       };
       next.edges = next.edges.map((e) =>
         e.to === ev.agent ? { ...e, live: false } : e,
@@ -144,7 +155,11 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
       next.reply = ev.reply;
       for (const a of AGENTS) {
         if (next.nodes[a].state === "active" || next.nodes[a].state === "tool") {
-          next.nodes[a] = { ...next.nodes[a], state: "done" };
+          next.nodes[a] = {
+            ...next.nodes[a],
+            state: "done",
+            activeTool: undefined,
+          };
         }
       }
       next.edges = next.edges.map((e) => ({ ...e, live: false }));
@@ -156,6 +171,7 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
           ...next.nodes[ev.agent],
           state: "error",
           last: ev.message,
+          activeTool: undefined,
         };
       }
       push(`error: ${ev.message}`);
