@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { KeeperSecrets } from "../ring";
 import { postPaidTrigger } from "../paidTrigger";
+import {
+  createCapabilityBroker,
+  publicCapability,
+  redactSecrets,
+} from "../capabilities";
 import type { AgentId, Emit, RunResult } from "./types";
 import { runComposer, stickyPropose } from "./composer";
 import { runSolver } from "./solver";
@@ -103,8 +108,14 @@ async function runPayer(opts: {
     tool: "postPaidTrigger",
   });
   try {
-    const paid = await postPaidTrigger(opts.secrets, "trigger");
-    const summary = `x402 /trigger status=${paid.status}`;
+    const broker = createCapabilityBroker(opts.secrets);
+    const cap = broker.mint("pay:trigger", 120_000);
+    const paid = await postPaidTrigger(opts.secrets, "trigger", {
+      capabilityId: cap.id,
+      broker,
+      mintInternal: false,
+    });
+    const summary = `x402 /trigger status=${paid.status} cap=${cap.id}`;
     opts.emit({
       type: "tool_end",
       runId: opts.runId,
@@ -113,7 +124,11 @@ async function runPayer(opts: {
       ok: paid.status >= 200 && paid.status < 300,
       summary,
     });
-    const text = `Payer paid /trigger → ${paid.status}\n${paid.body.slice(0, 500)}`;
+    const pub = publicCapability(cap);
+    const text = redactSecrets(
+      `Payer paid /trigger → ${paid.status} (capability ${pub.scope} ${pub.id})\n${paid.body.slice(0, 500)}`,
+      opts.secrets,
+    );
     opts.emit({
       type: "agent_message",
       runId: opts.runId,
@@ -123,7 +138,10 @@ async function runPayer(opts: {
     opts.emit({ type: "agent_end", runId: opts.runId, agent: "payer" });
     return text;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = redactSecrets(
+      e instanceof Error ? e.message : String(e),
+      opts.secrets,
+    );
     opts.emit({
       type: "tool_end",
       runId: opts.runId,
@@ -184,6 +202,7 @@ export async function orchestrate(opts: {
     secrets: opts.secrets,
     gateProceed: null,
     overrideExecute: composed.overrideExecute,
+    broker: createCapabilityBroker(opts.secrets),
   };
 
   const parts: string[] = [];

@@ -2,6 +2,7 @@ import type { KeeperSecrets } from "../ring";
 import type { Emit } from "./types";
 import { runTool, type ToolCtx } from "./tools";
 import type { PolicyDraft, PolicyDraftItem } from "./policyDraft";
+import { createCapabilityBroker } from "../capabilities";
 
 export async function confirmPolicyProposals(opts: {
   secrets: KeeperSecrets;
@@ -19,6 +20,7 @@ export async function confirmPolicyProposals(opts: {
     secrets: opts.secrets,
     gateProceed: null,
     overrideExecute: false,
+    broker: createCapabilityBroker(opts.secrets),
   };
 
   emit({

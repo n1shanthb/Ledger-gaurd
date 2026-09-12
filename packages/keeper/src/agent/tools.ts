@@ -9,11 +9,19 @@ import {
   evaluateSwapGate,
 } from "@lga/graph-data";
 import { queryReceiptGraphNl } from "./subgraphMcp";
+import {
+  createCapabilityBroker,
+  publicCapability,
+  redactSecrets,
+  stampCapability,
+  type CapabilityBroker,
+} from "../capabilities";
 
 export type ToolCtx = {
   secrets: KeeperSecrets;
   gateProceed: boolean | null;
   overrideExecute: boolean;
+  broker?: CapabilityBroker;
 };
 
 export type ToolResult = {
@@ -29,6 +37,15 @@ function ensureGraphKey(secrets: KeeperSecrets) {
   process.env.GRAPH_API_KEY = key;
 }
 
+function brokerOf(ctx: ToolCtx): CapabilityBroker {
+  return ctx.broker ?? createCapabilityBroker(ctx.secrets);
+}
+
+/** Stamp read scope before Graph/Pyth tool work (in-process; not an agent RPC). */
+function stampRead(ctx: ToolCtx, scope: "read:graph" | "read:pyth") {
+  return stampCapability(brokerOf(ctx), scope, 60_000);
+}
+
 export async function runTool(
   ctx: ToolCtx,
   name: string,
@@ -38,6 +55,7 @@ export async function runTool(
   try {
     switch (name) {
       case "queryReceiptGraphNl": {
+        stampRead(ctx, "read:graph");
         const question = String(args.question ?? "").trim();
         if (!question) {
           return {
@@ -62,6 +80,7 @@ export async function runTool(
         };
       }
       case "listActivePolicies": {
+        stampRead(ctx, "read:graph");
         const policies = await fetchActivePolicies(
           ctx.secrets.graphUrl,
           ctx.secrets.graphApiKey,
@@ -90,6 +109,7 @@ export async function runTool(
         };
       }
       case "getPythSpot": {
+        stampRead(ctx, "read:pyth");
         const asset = String(args.asset ?? "eth");
         const feed =
           asset === "btc"
@@ -104,6 +124,7 @@ export async function runTool(
         };
       }
       case "compareLendingRisk": {
+        stampRead(ctx, "read:graph");
         ensureGraphKey(ctx.secrets);
         const d = await decideSafestBorrow({
           assetSymbol: String(args.assetSymbol ?? "USDC"),
@@ -129,6 +150,7 @@ export async function runTool(
         };
       }
       case "findDeepestWethPool": {
+        stampRead(ctx, "read:graph");
         ensureGraphKey(ctx.secrets);
         const d = await decideDeepestWethPool({
           baseOnly: !Boolean(args.crossChain),
@@ -152,6 +174,7 @@ export async function runTool(
         };
       }
       case "evaluateSwapGate": {
+        stampRead(ctx, "read:graph");
         ensureGraphKey(ctx.secrets);
         const g = await evaluateSwapGate({
           maxUtil: typeof args.maxUtil === "number" ? args.maxUtil : undefined,
@@ -198,10 +221,24 @@ export async function runTool(
             ok: false,
           };
         }
-        const paid = await postPaidTrigger(ctx.secrets, "trigger");
+        const broker = createCapabilityBroker(ctx.secrets);
+        const cap = broker.mint("pay:trigger", 120_000);
+        const paid = await postPaidTrigger(ctx.secrets, "trigger", {
+          capabilityId: cap.id,
+          broker,
+          mintInternal: false,
+        });
         return {
-          out: JSON.stringify(paid),
-          summary: "x402 /trigger sent",
+          out: redactSecrets(
+            JSON.stringify({
+              status: paid.status,
+              body: paid.body.slice(0, 400),
+              hashscanUrl: paid.hashscanUrl,
+              capability: publicCapability(cap),
+            }),
+            ctx.secrets,
+          ),
+          summary: "x402 /trigger via capability",
           ok: true,
         };
       }

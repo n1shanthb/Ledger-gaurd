@@ -1,5 +1,6 @@
 import type { AgentId, Emit, ToolDef } from "./types";
 import type { KeeperSecrets } from "../ring";
+import { redactSecrets } from "../capabilities";
 import { runTool, type ToolCtx } from "./tools";
 
 type Msg = Record<string, unknown>;
@@ -182,6 +183,10 @@ export async function runSpecialistLoop(opts: {
         toolTrace.push(`${agent}:${name}`);
         emit({ type: "tool_start", runId, agent, tool: name });
         const result = await runTool(ctx, name, tc.function.arguments || "{}");
+        const safeOut = redactSecrets(result.out, secrets);
+        const safeSummary = result.summary
+          ? redactSecrets(result.summary, secrets)
+          : result.summary;
         if (typeof result.gateProceed === "boolean") {
           ctx.gateProceed = result.gateProceed;
           let reasons: string[] = [];
@@ -204,12 +209,12 @@ export async function runSpecialistLoop(opts: {
           agent,
           tool: name,
           ok: result.ok,
-          summary: result.summary,
+          summary: safeSummary,
         });
         messages.push({
           role: "tool",
           tool_call_id: tc.id,
-          content: result.out,
+          content: safeOut,
         });
       }
       continue;
@@ -221,7 +226,7 @@ export async function runSpecialistLoop(opts: {
         type: "agent_message",
         runId,
         agent,
-        text: lastText.trim().slice(0, 800),
+        text: redactSecrets(lastText.trim(), secrets).slice(0, 800),
       });
     }
     emit({ type: "agent_end", runId, agent });
