@@ -14,6 +14,7 @@ type Payment = {
   hashscanUrl?: string | null;
   hcsRef?: string | null;
   hcsTopicUrl?: string | null;
+  agentId?: string | null;
   note?: string;
 };
 
@@ -187,6 +188,7 @@ export function KeeperAgentPanel() {
               <div className="text-paper">
                 {p.attemptId} · {p.path} · eval {p.evaluated} · fills{" "}
                 {p.executed.length}
+                {p.agentId ? ` · agent ${p.agentId}` : ""}
               </div>
               <div>{new Date(p.paidAt).toLocaleString()}</div>
               {p.hashscanUrl && (
@@ -199,7 +201,21 @@ export function KeeperAgentPanel() {
                   HashScan →
                 </a>
               )}
-              {p.hcsRef && <div className="text-mute">HCS {p.hcsRef}</div>}
+              {p.hcsRef &&
+                (p.hcsTopicUrl ? (
+                  <div>
+                    <a
+                      href={p.hcsTopicUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-signal hover:underline"
+                    >
+                      HCS {p.hcsRef}
+                    </a>
+                  </div>
+                ) : (
+                  <div className="text-mute">HCS {p.hcsRef}</div>
+                ))}
               {p.executed.map((e) =>
                 e.tx ? (
                   <div key={e.tx}>
