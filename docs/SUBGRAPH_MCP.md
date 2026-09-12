@@ -21,6 +21,35 @@ Auth Gateway with `GRAPH_API_KEY` / `NEXT_PUBLIC_GRAPH_API_KEY`.
 
 Package: [`packages/graph-data`](../packages/graph-data/README.md) — `decideSafestBorrow`, `decideDeepestWethPool`, `evaluateSwapGate`, plus fan-out helpers.
 
+## Clerk + Subgraph MCP (Phase C1 — Graph named beat)
+
+LGA is the **AI Use Case agent/app**. Receipt **Clerk** answers status questions via a **Subgraph MCP consumer path** (NL → live Subgraph Studio Receipt Graph). Clerk is **not** sold as a standalone tooling MCP product.
+
+Clerk hits the **same live Studio endpoint** Subgraph MCP queries (`queryReceiptGraphNl`); for IDE demos use `npx @graphprotocol/subgraph-mcp` in Cursor — LGA is the agent/app, not the MCP server product.
+
+**Judge flow (reproduce):**
+
+1. Point Cursor/Claude Subgraph MCP at Gateway with your Studio API key *or* use LGA Agent chat (status pipeline).
+2. Ask Clerk NL questions against Receipt Graph Studio  
+   `https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.4`
+3. Expect live fields (`policies`, `executionReceipts`, `paymentAudits`) — no mocks.
+
+### Clerk judge prompts
+
+```text
+what policies are active?
+```
+
+```text
+recent execution receipts?
+```
+
+```text
+List active Guardian policies and latest execution receipts from the LGA Receipt Graph.
+```
+
+Keeper tool: `queryReceiptGraphNl` (agent `clerk`, SSE `tool_start` / `tool_end`). Proofs: [docs/proofs/phase-c1.md](./proofs/phase-c1.md).
+
 ## MCP prompts (judges)
 
 ### Receipt Graph (AI Use Case)
@@ -56,9 +85,9 @@ Run the same Messari liquidityPools query (orderBy totalValueLockedUSD) across U
 Compose Guardian context: active Receipt Graph policies + Messari decisions (borrow risk + WETH depth) + evaluateSwapGate.
 ```
 
-## Phase 2 agents (events drive UI)
+## Phase A agents (events drive UI)
 
-Coordinator → **Policy Sentinel** (Receipt Graph) → **Market Oracle** (Messari/Pyth gate) → **Execution Broker** (x402).
+Composer → **Clerk** (Receipt Graph status) → **Market Solver** (code-first Messari/Pyth gate) → **Payer** (non-LLM x402 `/trigger`). Autopilot + Driver own pay-on-hit → Base fill (no LLM).
 
 - Keeper: `POST /agent/run` streams `AgentEvent` SSE; `/console/agent` graph only animates from those events.
 - Same decide/gate documents as Compose — no mock animation loops.
@@ -67,9 +96,9 @@ Coordinator → **Policy Sentinel** (Receipt Graph) → **Market Oracle** (Messa
 ## Demo script (≤3 min)
 
 1. Open console → **Compose** (verdicts + gate).  
-2. Open **Agent** → ask “Should I execute?” → watch Sentinel→Oracle→Broker light from SSE.  
-3. Point Subgraph MCP at Studio; ask for active policies.  
-4. Pitch: *“One Messari query → risk + liquidity decision → Ledger/x402 path.”*  
+2. Open **Agent** → ask “what policies are active?” → watch **Clerk** + `queryReceiptGraphNl` (Subgraph MCP path).  
+3. Ask “recent execution receipts?” — live Studio `executionReceipts`.  
+4. Pitch: *“Use Case agent/app — Clerk NL over Receipt Graph via Subgraph MCP; not a tooling MCP product.”* · pool = **Start Fresh**.  
 
 ## Receipt Graph example
 

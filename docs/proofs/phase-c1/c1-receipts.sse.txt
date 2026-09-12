@@ -1,0 +1,22 @@
+data: {"type":"run_start","runId":"f15472fd"}
+
+data: {"type":"agent_start","runId":"f15472fd","agent":"composer","model":"openai/gpt-4o-mini"}
+
+data: {"type":"agent_message","runId":"f15472fd","agent":"composer","text":"pipeline=status request for recent receipts"}
+
+data: {"type":"agent_end","runId":"f15472fd","agent":"composer"}
+
+data: {"type":"edge","runId":"f15472fd","from":"composer","to":"clerk","label":"Receipt Graph"}
+
+data: {"type":"agent_start","runId":"f15472fd","agent":"clerk","model":"openai/gpt-4o-mini"}
+
+data: {"type":"tool_start","runId":"f15472fd","agent":"clerk","tool":"queryReceiptGraphNl"}
+
+data: {"type":"tool_end","runId":"f15472fd","agent":"clerk","tool":"queryReceiptGraphNl","ok":true,"summary":"mcp receipts 2"}
+
+data: {"type":"agent_message","runId":"f15472fd","agent":"clerk","text":"Here are the recent execution receipts:\n\n1. **Receipt**:\n   - **Trigger Type**: TAKE_PROFIT\n   - **Pyth Price**: 250129516596\n   - **Execution Price**: 249912000000\n   - **Compliant**: Yes\n   - **Transaction Hash**: [0x41a4e8ced5804985faaac056f03567460e15f66dbec2f8062065744448f1ac51](https://explorer.example.com/tx/0x41a4e8ced5804985faaac056f03567460e15f66dbec2f8062065744448f1ac51)\n   - **Timestamp**: 1788692125\n\n2. **Receipt**:\n   - **Trigger Type**: TAKE_PROFIT\n   - **Pyth Price**: 249895119138\n   - **Execution Price**: 250123283797\n   - **Compliant**: Yes\n   - **Transaction Hash**: [0x5941f3d2a8d598797fcf07b7d3103cc06cd1e3663649cca60c1c9d4f85303fe8](https://explorer.example.com/tx/0x5941f3d2a8d598797fcf07b7d3103cc06cd1e3663649cca60c1c9d4f85303fe8)\n   - **Timestamp**: 1788689119\n\nIf you "}
+
+data: {"type":"agent_end","runId":"f15472fd","agent":"clerk"}
+
+data: {"type":"run_end","runId":"f15472fd","reply":"**Clerk**\nHere are the recent execution receipts:\n\n1. **Receipt**:\n   - **Trigger Type**: TAKE_PROFIT\n   - **Pyth Price**: 250129516596\n   - **Execution Price**: 249912000000\n   - **Compliant**: Yes\n   - **Transaction Hash**: [0x41a4e8ced5804985faaac056f03567460e15f66dbec2f8062065744448f1ac51](https://explorer.example.com/tx/0x41a4e8ced5804985faaac056f03567460e15f66dbec2f8062065744448f1ac51)\n   - **Timestamp**: 1788692125\n\n2. **Receipt**:\n   - **Trigger Type**: TAKE_PROFIT\n   - **Pyth Price**: 249895119138\n   - **Execution Price**: 250123283797\n   - **Compliant**: Yes\n   - **Transaction Hash**: [0x5941f3d2a8d598797fcf07b7d3103cc06cd1e3663649cca60c1c9d4f85303fe8](https://explorer.example.com/tx/0x5941f3d2a8d598797fcf07b7d3103cc06cd1e3663649cca60c1c9d4f85303fe8)\n   - **Timestamp**: 1788689119\n\nIf you need more details or have other questions, feel free to ask!"}
+

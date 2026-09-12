@@ -1,0 +1,22 @@
+data: {"type":"run_start","runId":"fb528273"}
+
+data: {"type":"agent_start","runId":"fb528273","agent":"composer","model":"openai/gpt-4o-mini"}
+
+data: {"type":"agent_message","runId":"fb528273","agent":"composer","text":"pipeline=status active policies inquiry"}
+
+data: {"type":"agent_end","runId":"fb528273","agent":"composer"}
+
+data: {"type":"edge","runId":"fb528273","from":"composer","to":"clerk","label":"Receipt Graph"}
+
+data: {"type":"agent_start","runId":"fb528273","agent":"clerk","model":"openai/gpt-4o-mini"}
+
+data: {"type":"tool_start","runId":"fb528273","agent":"clerk","tool":"queryReceiptGraphNl"}
+
+data: {"type":"tool_end","runId":"fb528273","agent":"clerk","tool":"queryReceiptGraphNl","ok":true,"summary":"mcp policies 0"}
+
+data: {"type":"agent_message","runId":"fb528273","agent":"clerk","text":"There are currently no active policies. If you have any further questions or need assistance with something else, feel free to ask!"}
+
+data: {"type":"agent_end","runId":"fb528273","agent":"clerk"}
+
+data: {"type":"run_end","runId":"fb528273","reply":"**Clerk**\nThere are currently no active policies. If you have any further questions or need assistance with something else, feel free to ask!"}
+
