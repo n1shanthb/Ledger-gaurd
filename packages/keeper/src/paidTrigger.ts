@@ -2,6 +2,12 @@ import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";
 import { ExactHederaScheme } from "@x402/hedera/exact/client";
 import { createClientHederaSigner, PrivateKey } from "@x402/hedera";
 import type { KeeperSecrets } from "./ring";
+import {
+  createCapabilityBroker,
+  publicCapability,
+  type Capability,
+  type CapabilityBroker,
+} from "./capabilities";
 
 export function createPaidFetch(secrets: KeeperSecrets) {
   const accountId = secrets.hederaAccountId;
@@ -34,6 +40,7 @@ export type PaidTriggerResult = {
   body: string;
   paymentResponse: string | null;
   hashscanUrl: string | null;
+  capability?: ReturnType<typeof publicCapability>;
 };
 
 export function hashscanFromPayment(
@@ -64,10 +71,39 @@ export function hashscanFromPayment(
   return `https://hashscan.io/${net}/account/${process.env.HEDERA_ACCOUNT_ID ?? ""}`;
 }
 
+export type PaidTriggerOpts = {
+  /** Existing capability id — fail closed if missing/expired/wrong scope */
+  capabilityId?: string;
+  /**
+   * Hot path stamp: Autopilot / `npm run pay` / Payer mint in-process.
+   * Not a separate agent request API — just a server-side TTL handle.
+   * Default true; set false to require capabilityId (fail closed).
+   */
+  mintInternal?: boolean;
+  broker?: CapabilityBroker;
+  ttlMs?: number;
+};
+
 export async function postPaidTrigger(
   secrets: KeeperSecrets,
   path: "trigger" | "quote" = "trigger",
+  opts: PaidTriggerOpts = {},
 ): Promise<PaidTriggerResult> {
+  const needed = path === "quote" ? "pay:quote" : "pay:trigger";
+  const broker = opts.broker ?? createCapabilityBroker(secrets);
+  const mintInternal = opts.mintInternal !== false;
+
+  let cap: Capability;
+  if (opts.capabilityId) {
+    cap = broker.require(opts.capabilityId, needed);
+  } else if (mintInternal) {
+    cap = broker.mint(needed, opts.ttlMs ?? 120_000);
+  } else {
+    throw new Error(
+      `capability required for ${needed} — broker hands out scopes, never raw API keys`,
+    );
+  }
+
   const paid = createPaidFetch(secrets);
   const url = path === "quote" ? quoteUrl() : triggerUrl();
   const res = await paid(url, {
@@ -83,5 +119,6 @@ export async function postPaidTrigger(
     body,
     paymentResponse,
     hashscanUrl: hashscanFromPayment(secrets.hederaNetwork, paymentResponse),
+    capability: publicCapability(cap),
   };
 }

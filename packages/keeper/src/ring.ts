@@ -327,7 +327,7 @@ export function ringStatus(secrets: KeeperSecrets) {
     headless: secrets.source === "ring",
     note:
       secrets.source === "ring"
-        ? "session key from Key Ring decrypt — no USB at runtime"
-        : "env fallback — not Ledger prize ready",
+        ? "Key Ring holds keeper secrets; capability broker mints scoped TTLs — no USB at runtime"
+        : "env fallback — broker still scopes pay/execute; prefer ring for Ledger prize",
   };
 }

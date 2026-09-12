@@ -1,5 +1,6 @@
 import express from "express";
 import { loadSecrets, ringStatus } from "./ring";
+import { createCapabilityBroker } from "./capabilities";
 import { fetchActivePolicies, mcpHint } from "./subgraph";
 import { runCycle } from "./cycle";
 import { keeperX402 } from "./x402";
@@ -126,10 +127,12 @@ async function handlePaidCycle(
 
 app.get("/health", (_req, res) => {
   const pollMs = Number(process.env.POLL_MS ?? 0);
+  const broker = createCapabilityBroker(secrets);
   res.json({
     ok: true,
     mcp: mcpHint(secrets.graphUrl),
     keyRing: ringStatus(secrets),
+    capabilityBroker: broker.status(),
     network: secrets.hederaNetwork,
     openRouter: Boolean(secrets.openRouterApiKey),
     openRouterModels: secrets.openRouterModels,

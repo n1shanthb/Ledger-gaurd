@@ -4,6 +4,7 @@ import { feedForToken, fetchSpotUsd1e8, fetchVaas, shouldTrigger } from "./pyth"
 import { executePolicy } from "./executor";
 import type { KeeperSecrets } from "./ring";
 import type { PaymentHit } from "./payments";
+import { createCapabilityBroker, stampCapability } from "./capabilities";
 
 export type CycleOpts = {
   execute: boolean;
@@ -20,6 +21,9 @@ export async function runCycle(
   secrets: KeeperSecrets,
   opts: CycleOpts = { execute: true },
 ): Promise<CycleResult> {
+  const broker = createCapabilityBroker(secrets);
+  stampCapability(broker, "read:graph", 30_000);
+  stampCapability(broker, "read:pyth", 30_000);
   const policies = await fetchActivePolicies(secrets.graphUrl, secrets.graphApiKey);
   const hits: PaymentHit[] = [];
   const skips: CycleResult["skips"] = [];
@@ -61,6 +65,8 @@ export async function runCycle(
       manager: secrets.manager,
       policyId: pol.id as Hex,
       vaas,
+      secrets,
+      mintInternal: true,
     });
     hits.push({ policyId: pol.id, trigger, tx });
     console.log(`[lga] Driver filled ${tx}`);
@@ -80,6 +86,9 @@ export async function runCycle(
 export async function findHitPolicies(secrets: KeeperSecrets): Promise<
   { pol: PolicyRow; trigger: string; spot: bigint }[]
 > {
+  const broker = createCapabilityBroker(secrets);
+  stampCapability(broker, "read:graph", 30_000);
+  stampCapability(broker, "read:pyth", 30_000);
   const policies = await fetchActivePolicies(secrets.graphUrl, secrets.graphApiKey);
   const out: { pol: PolicyRow; trigger: string; spot: bigint }[] = [];
   for (const pol of policies) {
