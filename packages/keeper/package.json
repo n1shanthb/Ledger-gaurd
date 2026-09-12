@@ -10,6 +10,7 @@
     "ring:export": "node --import tsx src/ringExport.ts",
     "complete-account": "node --import tsx src/completeAccount.ts",
     "pay": "node --import tsx src/pay.ts",
+    "pay:quote": "node --import tsx src/pay.ts --quote",
     "pay:on-hit": "node --import tsx src/runPayOnHit.ts"
   },
   "dependencies": {
