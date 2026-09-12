@@ -3,7 +3,7 @@
 > **Master checklist** mapping official prize requirements → LGA deliverables.
 > Canonical product truth: [ANCHOR.md](./ANCHOR.md)
 
-**Event pool:** Start from Scratch (net-new project) for Ledger and The Graph AI tracks.
+**Event pool:** **Start Fresh** / Start from Scratch (net-new project) for Ledger and The Graph AI tracks — not Continuity.
 
 ---
 
@@ -14,14 +14,17 @@ User clear-signs exit policy on Ledger (HITL)
         ↓
 Receipt Graph indexes policies + ExecutionReceipts (The Graph — live Studio)
         ↓
-Keeper agent polls via Subgraph MCP → evaluates Pyth price → decides trigger
+Keeper agent (Clerk / Solver) evaluates Pyth + Messari gate
         ↓
-Agent pays HBAR via x402 → POST /trigger (Hedera + Blocky402)
+HOST:  POST /trigger returns 402 unpaid (Blocky402 / Hedera)
+CONSUMER: Payer / Autopilot / npm run pay → HBAR settle → execute attempt
         ↓
 executePolicy() on Base → receipt indexed → compliance queryable
         ↓
 Kill switch on Ledger → all delegation revoked
 ```
+
+**Hedera host+consumer:** the same keeper process **hosts** gated `/trigger` and **pays** as the x402 consumer. Graph prize = AI **Use Case** agent/app (Receipt Graph load-bearing), not tooling.
 
 ---
 
@@ -132,21 +135,21 @@ Package: `packages/graph-data`. Docs: [SUBGRAPH_MCP.md](./SUBGRAPH_MCP.md).
 
 | Requirement | LGA deliverable | Status |
 |---|---|---|
-| **Live x402-gated service** on Hedera testnet or mainnet | `POST /trigger` on keeper — returns 402 without payment | ⬜ |
-| Settled through **Blocky402** facilitator | `POST /verify` → `POST /settle` via Blocky402 testnet | ⬜ |
-| **Platform/agent consumes** service with ≥1 **real paid request** E2E | Keeper client (or script) pays HBAR → trigger → Base execution attempt | ⬜ |
-| Public GitHub + README (setup, architecture, payment flow) | `packages/keeper/README.md` | ⬜ |
+| **Live x402-gated service** on Hedera testnet or mainnet | `POST /trigger` on keeper — returns 402 without payment | ✅ see `docs/proofs/x402-settle.md` |
+| Settled through **Blocky402** facilitator | `POST /verify` → `POST /settle` via Blocky402 testnet | ✅ |
+| **Platform/agent consumes** service with ≥1 **real paid request** E2E | Keeper Payer / CLI `npm run pay` pays HBAR → trigger | ✅ |
+| Public GitHub + README (setup, architecture, payment flow) | `packages/keeper/README.md` host+consumer diagram | ✅ |
 | Demo video **≤ 5 minutes** showing paid request | Show 402 → pay → settle → trigger fires | ⬜ |
 
 ### Our x402 service design
 
 ```text
 Service:  LGA Keeper API — "paid execution attempt for hardware-bounded policy"
-Endpoint: POST /trigger
+Endpoint: POST /trigger   ← HOST (x402-gated)
 Price:    ~0.001 HBAR (100,000 tinybars) per attempt
 Network:  hedera:testnet (demo) → mainnet optional
 Facilitator: https://api.testnet.blocky402.com
-Consumer:   Keeper agent or CLI script using @x402/hedera
+Consumer:   Payer agent · Autopilot pay-on-hit · CLI `npm run pay` (@x402/hedera)
 ```
 
 **What is being sold:** one evaluated trigger attempt (Pyth check + optional Base tx), not the Base gas itself.
