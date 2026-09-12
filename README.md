@@ -2,6 +2,8 @@
 
 > Hardware-bounded DeFi exits — Ledger clear-sign · Receipt Graph · x402 keeper · Key Ring secrets.
 
+**ETHOnline pool:** **Start Fresh** (net-new) — not Continuity.  
+**Graph prize pitch:** Best AI **Use Case** agent/app — Receipt Graph is load-bearing for keeper decisions (not a tooling MCP product).
 
 ## What It Does
 
@@ -9,7 +11,7 @@
 2. **Key Ring secrets** — keeper loads session key + API creds via `wallet-cli ring`, not `.env`.
 3. **Receipt Graph** — live Subgraph on Base indexes policies + compliance receipts.
 4. **Keeper automation** — polls Graph + Pyth, decides trigger, executes on Base.
-5. **x402 gate** — agent pays HBAR per `/trigger` attempt (Blocky402 on Hedera).
+5. **x402 gate** — same process **hosts** gated `POST /trigger` and **pays** as Payer/Autopilot (Blocky402 on Hedera).
 6. **Kill switch** — one Ledger-signed tx revokes all delegation.
 
 ---
@@ -23,9 +25,12 @@ Receipt Graph (The Graph Studio) ← Keeper Agent
                                       ↑
                               Hedera x402 (Blocky402)
                               Pyth (live prices)
+
+Host:     POST /trigger (402 unpaid → settle → execute)
+Consumer: Payer · Autopilot pay-on-hit · npm run pay
 ```
 
-**Docs:** [ANCHOR.md](./docs/ANCHOR.md) · [ARCHITECTURE.md](./docs/ARCHITECTURE.md) · [HACKATHON.md](./docs/HACKATHON.md)
+**Docs:** [ANCHOR.md](./docs/ANCHOR.md) · [ARCHITECTURE.md](./docs/ARCHITECTURE.md) · [HACKATHON.md](./docs/HACKATHON.md) · [x402 settle proof](./docs/proofs/x402-settle.md)
 
 ---
 

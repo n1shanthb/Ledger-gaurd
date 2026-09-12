@@ -2,9 +2,26 @@
 
 Headless agent: Receipt Graph → Pyth → **x402-gated** `POST /trigger` → `executePolicy` on Base.
 
-**Prize mode:** `POLL_MS=0` — no free fills. Pay-on-hit or `npm run pay` / agent `requestExecutionAttempt`.
+**Prize mode:** `POLL_MS=0` — no free fills. Pay-on-hit or `npm run pay` / agent Payer (`postPaidTrigger`).
 
 **Ledger P0:** secrets in **Key Ring** (`wallet-cli ring`), including `OPENROUTER_API_KEY`. Runtime = `WALLET_PASS` + network — **no USB**.
+
+**Submission:** ETHOnline **Start Fresh** (net-new). Graph track pitch = AI **Use Case** agent/app (Receipt Graph drives keeper decisions) — not a tooling MCP product.
+
+## Host + consumer (same process)
+
+```text
+┌─ HOST (Blocky402 / Hedera) ─────────────────────────────┐
+│  POST /trigger  →  HTTP 402 unpaid  →  settle → execute  │
+└─────────────────────────────────────────────────────────┘
+         ▲ pays HBAR (~0.001)
+┌─ CONSUMER ──────────────────────────────────────────────┐
+│  Payer (chat execute)  ·  Autopilot pay-on-hit  ·  CLI   │
+│  `npm run pay` / `postPaidTrigger` — no OpenRouter       │
+└─────────────────────────────────────────────────────────┘
+```
+
+Same Railway service **hosts** the gated `/trigger` and **runs** the paying consumer (Payer / Autopilot / `npm run pay`).
 
 ## Key Ring
 
@@ -38,13 +55,13 @@ WALLET_PASS=… POLL_MS=0 npm start
 
 | Route | Gate | Role |
 |---|---|---|
-| `GET /health` | open | ring + poll mode |
+| `GET /health` | open | ring + poll mode + Studio MCP URL |
 | `GET /policies` | open | Studio policies + MCP hint |
 | `GET /payments/recent` | open | x402 attempt audit |
-| `POST /agent/chat` | open | Multi-agent JSON (Coordinator→specialists) |
+| `POST /agent/chat` | open | Multi-agent JSON (Composer→Clerk/Solver/Payer) |
 | `POST /agent/run` | open | Same pipeline as SSE (`text/event-stream`) |
 | `POST /quote` | x402 (cheap) | Graph+Pyth eval, no execute |
-| `POST /trigger` | x402 | full execute attempt |
+| `POST /trigger` | x402 | full execute attempt (**host**) |
 
 ## x402 qualification
 
@@ -54,14 +71,16 @@ export KEEPER_URL=https://YOUR.up.railway.app
 # unpaid → 402
 curl -i -X POST "$KEEPER_URL/trigger" -H "content-type: application/json" -d "{}"
 
-# paid → 200
+# paid → 200 (consumer)
 WALLET_PASS=… KEEPER_URL=$KEEPER_URL/trigger npm run pay
 
-# auto when price hits (pays only on band hit)
+# auto when price hits (pays only on band hit — Autopilot, no LLM)
 WALLET_PASS=… KEEPER_URL=$KEEPER_URL npm run pay:on-hit
 ```
 
-Settlement proof template: [docs/proofs/x402-settle.md](../../docs/proofs/x402-settle.md)
+Settlement proof: [docs/proofs/x402-settle.md](../../docs/proofs/x402-settle.md) · Phase B log: [docs/proofs/phase-b.md](../../docs/proofs/phase-b.md)
+
+Facilitator: Blocky402 (`BLOCKY402_FACILITATOR_URL`, typically `https://api.testnet.blocky402.com`) on **hedera:testnet**.
 
 **What is sold:** metered execution attempt (~0.001 HBAR `/trigger`; cheaper `/quote`).
 
@@ -94,6 +113,7 @@ curl -N -X POST http://127.0.0.1:3001/agent/run \
 Events: `run_start` → `agent_start` / `tool_*` / `edge` / `gate` → `run_end`. UI on `/console/agent` animates **only** from these frames.
 
 Gate: Payer skips `postPaidTrigger` if Solver gate `proceed=false` unless user explicitly overrides.
+
 ## HCS + PaymentAudit (Graph)
 
 - Optional `HCS_TOPIC_ID` in ring → memo after settle.
