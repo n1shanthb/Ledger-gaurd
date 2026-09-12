@@ -7,6 +7,7 @@
     "start:env": "node --env-file=.env --import tsx src/index.ts",
     "dev": "node --import tsx --watch src/index.ts",
     "ring:enroll": "node --import tsx src/enroll.ts",
+    "ring:export": "node --import tsx src/ringExport.ts",
     "complete-account": "node --import tsx src/completeAccount.ts",
     "pay": "node --import tsx src/pay.ts",
     "pay:on-hit": "node --import tsx src/runPayOnHit.ts"

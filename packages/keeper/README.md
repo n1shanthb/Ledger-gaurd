@@ -18,6 +18,17 @@ WALLET_PASS=… npm run ring:enroll
 rm secrets.env
 ```
 
+**Edit / fix corrupted enroll** (use Node — do not pipe decrypt through PowerShell `Out-File` / `$plain = …`):
+
+```powershell
+cd packages/keeper
+$env:WALLET_PASS = '…'
+npm run ring:export          # writes secrets.env, prints key names
+# edit secrets.env if needed
+npm run ring:enroll
+Remove-Item secrets.env
+```
+
 ## Run (prize)
 
 ```bash
@@ -54,18 +65,19 @@ Settlement proof template: [docs/proofs/x402-settle.md](../../docs/proofs/x402-s
 
 **What is sold:** metered execution attempt (~0.001 HBAR `/trigger`; cheaper `/quote`).
 
-## OpenRouter multi-agent (Phase 2)
+## OpenRouter multi-agent (Phase A)
 
-One Key Ring key (`OPENROUTER_API_KEY`), per-agent models:
+One Key Ring key (`OPENROUTER_API_KEY`), per-agent models (legacy `*_COORDINATOR` / `*_ORACLE` / `*_SENTINEL` aliases still work):
 
 | Agent | Env | Default role |
 |---|---|---|
-| Coordinator | `OPENROUTER_MODEL_COORDINATOR` | classify pipeline (no tools) |
-| Sentinel | `OPENROUTER_MODEL_SENTINEL` | Receipt Graph policies |
-| Oracle | `OPENROUTER_MODEL_ORACLE` | Pyth + Messari decide/gate |
-| Broker | `OPENROUTER_MODEL_BROKER` | propose / x402 `/trigger` |
+| Composer | `OPENROUTER_MODEL_COMPOSER` | classify pipeline (no tools) |
+| Clerk | `OPENROUTER_MODEL_CLERK` | Receipt Graph + recent payments |
+| Solver | `OPENROUTER_MODEL_SOLVER` | explain after code-first `evaluateSwapGate` |
+| Payer | — | non-LLM x402 `postPaidTrigger` on execute |
+| Autopilot / Driver | — | pay-on-hit + Base fill (no LLM) |
 
-Fallback: `OPENROUTER_MODEL` → `openai/gpt-4o-mini`.
+Fallback: `OPENROUTER_MODEL` → `openai/gpt-4o-mini`. Solver defaults to `gpt-4o-mini`.
 
 ```bash
 # JSON
@@ -81,7 +93,7 @@ curl -N -X POST http://127.0.0.1:3001/agent/run \
 
 Events: `run_start` → `agent_start` / `tool_*` / `edge` / `gate` → `run_end`. UI on `/console/agent` animates **only** from these frames.
 
-Gate: Broker cannot `requestExecutionAttempt` if Oracle gate `proceed=false` unless user explicitly overrides.
+Gate: Payer skips `postPaidTrigger` if Solver gate `proceed=false` unless user explicitly overrides.
 ## HCS + PaymentAudit (Graph)
 
 - Optional `HCS_TOPIC_ID` in ring → memo after settle.

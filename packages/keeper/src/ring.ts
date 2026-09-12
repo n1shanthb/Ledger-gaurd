@@ -85,10 +85,9 @@ export type KeeperSecrets = {
   openRouterApiKey: string;
   openRouterModel: string;
   openRouterModels: {
-    coordinator: string;
-    sentinel: string;
-    oracle: string;
-    broker: string;
+    composer: string;
+    solver: string;
+    clerk: string;
   };
   hcsTopicId: string;
   paymentAuditLog: string;
@@ -140,13 +139,22 @@ export function ringEncrypt(plainPath: string, encPath = ENC_PATH, key = RING_KE
 }
 
 function parseEnvText(text: string): Record<string, string> {
+  // Strip UTF-8 BOM / UTF-16 nulls from bad PowerShell Out-File enrolls
+  let cleaned = text.replace(/^\uFEFF/, "");
+  if (cleaned.includes("\u0000")) {
+    cleaned = cleaned.replace(/\u0000/g, "");
+  }
+  // PowerShell `$plain = wallet-cli …` joins lines with spaces → one mega-line.
+  // Re-split before each KEY= token (env names are UPPER_SNAKE).
+  cleaned = cleaned.replace(/(?<=\S)[ \t]+(?=[A-Z][A-Z0-9_]+=)/g, "\n");
+
   const out: Record<string, string> = {};
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of cleaned.split(/\r?\n/)) {
     const line = raw.trim();
     if (!line || line.startsWith("#")) continue;
     const i = line.indexOf("=");
     if (i <= 0) continue;
-    const k = line.slice(0, i).trim();
+    const k = line.slice(0, i).trim().replace(/^\uFEFF/, "");
     let v = line.slice(i + 1).trim();
     if (
       (v.startsWith('"') && v.endsWith('"')) ||
@@ -170,6 +178,38 @@ function get(
   throw new Error(`missing ${key} in Key Ring secrets / env`);
 }
 
+function readDotEnv(): Record<string, string> {
+  const p = resolve(import.meta.dirname, "..", ".env");
+  if (!existsSync(p)) return {};
+  try {
+    return parseEnvText(readFileSync(p, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+/** Fill keys missing from ring bag (stale enroll) from .env / process.env. */
+function fillMissingFromEnv(bag: Record<string, string>): string[] {
+  const envBag = readDotEnv();
+  const filled: string[] = [];
+  const keys = new Set([
+    ...Object.keys(envBag),
+    ...Object.keys(process.env).filter((k) =>
+      /^(KEEPER_|BASE_|SUBGRAPH_|GRAPH_|GUARDIAN_|BLOCKY|X402_|PYTH_|HEDERA_|OPENROUTER_|HCS_|PAYMENT_)/.test(
+        k,
+      ),
+    ),
+  ]);
+  for (const k of keys) {
+    if (bag[k]) continue;
+    const v = envBag[k] ?? process.env[k];
+    if (!v) continue;
+    bag[k] = v;
+    filled.push(k);
+  }
+  return filled;
+}
+
 function preferRing(): boolean {
   if (process.env.LGA_SECRETS_SOURCE === "env") return false;
   if (process.env.LGA_SECRETS_SOURCE === "ring") return true;
@@ -189,16 +229,22 @@ export function loadSecrets(): KeeperSecrets {
     bag = parseEnvText(ringDecrypt());
     source = "ring";
     console.log(`[lga] secrets from Key Ring (${RING_KEY}) — ${ENC_PATH}`);
-  } else {
-    if (existsSync(resolve(import.meta.dirname, "..", ".env"))) {
-      try {
-        bag = parseEnvText(
-          readFileSync(resolve(import.meta.dirname, "..", ".env"), "utf8"),
-        );
-      } catch {
-        bag = {};
-      }
+    const n = Object.keys(bag).length;
+    if (n === 0) {
+      console.warn(
+        "[lga] ring decrypt parsed 0 keys — secrets.env.enc may be UTF-16/BOM corrupted; re-enroll with UTF-8",
+      );
+    } else {
+      console.log(`[lga] ring keys: ${n}`);
     }
+    const filled = fillMissingFromEnv(bag);
+    if (filled.length) {
+      console.warn(
+        `[lga] ring missing keys — filled from .env/env: ${filled.join(", ")} (re-enroll for prize-clean)`,
+      );
+    }
+  } else {
+    bag = readDotEnv();
     console.warn(
       "[lga] secrets from env — Key Ring is required for Ledger prize demo (LGA_SECRETS_SOURCE=ring)",
     );
@@ -253,14 +299,19 @@ export function loadSecrets(): KeeperSecrets {
     openRouterApiKey: get(bag, "OPENROUTER_API_KEY", ""),
     openRouterModel: defaultModel,
     openRouterModels: {
-      coordinator: get(
+      // New names; legacy COORDINATOR / SENTINEL aliases still accepted.
+      // Solver defaults to mini (do not inherit heavy OPENROUTER_MODEL_ORACLE).
+      composer: get(
         bag,
-        "OPENROUTER_MODEL_COORDINATOR",
-        "openai/gpt-4o-mini",
+        "OPENROUTER_MODEL_COMPOSER",
+        get(bag, "OPENROUTER_MODEL_COORDINATOR", "openai/gpt-4o-mini"),
       ),
-      sentinel: get(bag, "OPENROUTER_MODEL_SENTINEL", "openai/gpt-4o-mini"),
-      oracle: get(bag, "OPENROUTER_MODEL_ORACLE", defaultModel),
-      broker: get(bag, "OPENROUTER_MODEL_BROKER", defaultModel),
+      solver: get(bag, "OPENROUTER_MODEL_SOLVER", "openai/gpt-4o-mini"),
+      clerk: get(
+        bag,
+        "OPENROUTER_MODEL_CLERK",
+        get(bag, "OPENROUTER_MODEL_SENTINEL", "openai/gpt-4o-mini"),
+      ),
     },
     hcsTopicId: get(bag, "HCS_TOPIC_ID", ""),
     paymentAuditLog: get(bag, "PAYMENT_AUDIT_LOG", ""),
