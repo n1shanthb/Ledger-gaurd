@@ -91,10 +91,11 @@ export function KeeperAgentPanel() {
         <div className="space-y-3 rounded-xl border border-line bg-panel p-4">
           <p className="font-mono text-[11px] text-mute">{health}</p>
           <p className="text-sm text-mute">
-            Composer drafts policies from natural language (questions + form).
-            Clerk / Solver / Payer · Autopilot + Driver on pay-on-hit. Viz from
-            SSE only. Master key never leaves Ledger; Key Ring holds keeper
-            secrets.
+            Composer drafts policies from natural language. Clerk status uses
+            Subgraph MCP → live Receipt Graph (ask “what policies are active?”).
+            Solver / Payer · Autopilot + Driver on pay-on-hit. Viz from SSE only.
+            Master key never leaves Ledger; Key Ring holds keeper secrets. Use
+            Case agent/app — not a tooling MCP product.
           </p>
           <textarea
             className="w-full rounded-lg border border-mist bg-ink/40 px-3 py-2 text-sm text-paper outline-none focus:border-signal"

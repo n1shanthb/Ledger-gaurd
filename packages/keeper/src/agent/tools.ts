@@ -8,6 +8,7 @@ import {
   decideDeepestWethPool,
   evaluateSwapGate,
 } from "@lga/graph-data";
+import { queryReceiptGraphNl } from "./subgraphMcp";
 
 export type ToolCtx = {
   secrets: KeeperSecrets;
@@ -36,6 +37,30 @@ export async function runTool(
   const args = argsJson ? (JSON.parse(argsJson) as Record<string, unknown>) : {};
   try {
     switch (name) {
+      case "queryReceiptGraphNl": {
+        const question = String(args.question ?? "").trim();
+        if (!question) {
+          return {
+            out: JSON.stringify({ error: "question required" }),
+            summary: "missing question",
+            ok: false,
+          };
+        }
+        const result = await queryReceiptGraphNl(ctx.secrets, question);
+        const summary =
+          result.kind === "policies"
+            ? `mcp policies ${(result.data as { policies?: unknown[] })?.policies?.length ?? 0}`
+            : result.kind === "receipts"
+              ? `mcp receipts ${(result.data as { executionReceipts?: unknown[] })?.executionReceipts?.length ?? 0}`
+              : result.kind === "audits"
+                ? `mcp audits ${(result.data as { paymentAudits?: unknown[] })?.paymentAudits?.length ?? 0}`
+                : "mcp status";
+        return {
+          out: JSON.stringify(result),
+          summary,
+          ok: true,
+        };
+      }
       case "listActivePolicies": {
         const policies = await fetchActivePolicies(
           ctx.secrets.graphUrl,

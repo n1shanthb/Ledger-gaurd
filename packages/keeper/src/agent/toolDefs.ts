@@ -1,6 +1,25 @@
 import type { ToolDef } from "./types";
 
 export const TOOL_DEFS: Record<string, ToolDef> = {
+  queryReceiptGraphNl: {
+    type: "function",
+    function: {
+      name: "queryReceiptGraphNl",
+      description:
+        "Subgraph MCP consumer: answer a natural-language Receipt Graph question with live Subgraph Studio data (policies, execution receipts, payment audits). Prefer this over hardcoded list tools for status.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description:
+              "Natural language question, e.g. what policies are active? recent execution receipts?",
+          },
+        },
+        required: ["question"],
+      },
+    },
+  },
   listActivePolicies: {
     type: "function",
     function: {

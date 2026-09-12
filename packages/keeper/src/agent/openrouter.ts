@@ -108,6 +108,8 @@ export async function runSpecialistLoop(opts: {
   toolTrace: string[];
   /** First round must call a tool (stops "need more info" dead-ends). */
   forceToolsFirst?: boolean;
+  /** If set with forceToolsFirst, require this specific tool on round 0. */
+  forceToolName?: string;
 }): Promise<string> {
   const {
     secrets,
@@ -133,16 +135,21 @@ export async function runSpecialistLoop(opts: {
   let lastText = "";
   let usedTool = false;
   for (let i = 0; i < maxRounds; i++) {
-    const force =
-      opts.forceToolsFirst && i === 0 && !usedTool
-        ? ("required" as const)
-        : ("auto" as const);
+    const forceFirst = opts.forceToolsFirst && i === 0 && !usedTool;
+    const toolChoice = forceFirst
+      ? opts.forceToolName
+        ? ({
+            type: "function" as const,
+            function: { name: opts.forceToolName },
+          } as const)
+        : ("required" as const)
+      : ("auto" as const);
     const msg = await openRouterRound({
       apiKey: secrets.openRouterApiKey,
       model,
       messages,
       tools,
-      toolChoice: force,
+      toolChoice,
     });
 
     if (msg.tool_calls?.length) {

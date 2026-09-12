@@ -36,5 +36,5 @@ export async function fetchActivePolicies(
 }
 
 export function mcpHint(url: string): string {
-  return `Subgraph MCP → ${url} — query active policies, then decide STOP_LOSS vs TAKE_PROFIT vs skip`;
+  return `Subgraph MCP → Clerk NL status on ${url} — ask “what policies are active?” / “recent execution receipts?” (Use Case agent/app, not tooling)`;
 }

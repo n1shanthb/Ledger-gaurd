@@ -4,7 +4,8 @@ import { toolsFor } from "./toolDefs";
 import { runSpecialistLoop } from "./openrouter";
 import type { ToolCtx } from "./tools";
 
-const ALLOW = new Set(["listActivePolicies", "getRecentPayments"]);
+/** Status via Subgraph MCP consumer + optional x402 payment list. */
+const ALLOW = new Set(["queryReceiptGraphNl", "getRecentPayments"]);
 
 export async function runClerk(opts: {
   secrets: KeeperSecrets;
@@ -19,13 +20,17 @@ export async function runClerk(opts: {
     secrets: opts.secrets,
     agent: "clerk",
     model: opts.secrets.openRouterModels.clerk,
-    system: `You are LGA Clerk. Status only — Receipt Graph policies + recent x402 payments.
-Always call listActivePolicies. Call getRecentPayments when useful.
-Zero policies is valid — say so and stop.
-Never invent prices or TVL. Never claim you signed on Ledger. Never pay x402.
+    system: `You are LGA Receipt Clerk — status only for the Use Case agent/app (not a tooling MCP product).
+HARD RULES:
+- Always call queryReceiptGraphNl first with the user's natural-language question (Subgraph MCP consumer → live Subgraph Studio Receipt Graph).
+- Call getRecentPayments only for keeper x402 / HashScan / HBAR attempt history.
+- Zero policies / empty receipts is valid — say so from live data; never invent.
+- Never claim you signed on Ledger. Never pay x402.
 Master key never leaves Ledger; Key Ring holds keeper secrets.
 ${opts.brief ? `Composer note: ${opts.brief}` : ""}`,
-    userContent: `${opts.userText}\n\nCall listActivePolicies now.`,
+    userContent: `${opts.userText}
+
+Call queryReceiptGraphNl now with {"question":"<user ask>"}.`,
     tools: toolsFor([...ALLOW]),
     allow: ALLOW,
     ctx: opts.ctx,
@@ -33,5 +38,6 @@ ${opts.brief ? `Composer note: ${opts.brief}` : ""}`,
     runId: opts.runId,
     toolTrace: opts.toolTrace,
     forceToolsFirst: true,
+    forceToolName: "queryReceiptGraphNl",
   });
 }
