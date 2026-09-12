@@ -6,8 +6,10 @@ import { Html, RoundedBox } from "@react-three/drei";
 import {
   Activity,
   Cpu,
+  Gauge,
   Search,
   ShieldAlert,
+  Truck,
   Zap,
 } from "lucide-react";
 import * as THREE from "three";
@@ -26,15 +28,17 @@ import {
   MessariMark,
 } from "@/components/agent3d/BrandMarks";
 
-/** Spread layout — ≥4 units between agent nodes */
+/** Spread layout — six trust-boundary agents + docks */
 export const NODE_POS: Record<AgentId | ExternalId, [number, number, number]> = {
-  coordinator: [0, 1.45, -4.2],
-  sentinel: [-4.6, 1.15, 0.6],
-  oracle: [0, 1.15, 4.4],
-  broker: [4.6, 1.15, 0.6],
-  graph: [-7.8, 0.65, 0.6],
-  messari: [0, 0.6, 7.6],
-  hedera: [7.8, 0.65, 0.6],
+  composer: [0, 1.45, -4.2],
+  clerk: [-4.8, 1.15, 0.4],
+  solver: [0, 1.15, 4.6],
+  payer: [4.8, 1.15, 0.4],
+  autopilot: [-3.0, 1.05, -2.0],
+  driver: [3.0, 1.05, -2.0],
+  graph: [-8.0, 0.65, 0.4],
+  messari: [0, 0.6, 7.8],
+  hedera: [8.0, 0.65, 0.4],
   /** HITL clear-sign — physical Ledger OLED */
   ledger: [5.8, 0.9, -3.6],
 };
@@ -44,6 +48,8 @@ const COLORS = {
   graph: "#00ff88",
   oracle: "#a855f7",
   broker: "#ff9900",
+  autopilot: "#38bdf8",
+  driver: "#f472b6",
   ledger: "#b8f000",
 } as const;
 
@@ -245,7 +251,7 @@ function SentinelMesh({ hot, tool }: { hot: boolean; tool: boolean }) {
 
   // direction toward graph dock in local-ish space
   const graph = NODE_POS.graph;
-  const self = NODE_POS.sentinel;
+  const self = NODE_POS.clerk;
   const beamDir = useMemo(() => {
     const d = new THREE.Vector3(graph[0] - self[0], 0, graph[2] - self[2]).normalize();
     return Math.atan2(d.x, d.z);
@@ -390,6 +396,63 @@ function BrokerMesh({ hot, tool }: { hot: boolean; tool: boolean }) {
   );
 }
 
+function AutopilotMesh({ hot, tool }: { hot: boolean; tool: boolean }) {
+  const ring = useRef<THREE.Mesh>(null);
+  const color = COLORS.autopilot;
+  const busy = hot || tool;
+  useFrame((_, dt) => {
+    if (ring.current) ring.current.rotation.z += dt * (busy ? 2.2 : 0.5);
+  });
+  return (
+    <group>
+      <mesh ref={ring} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.55, 0.08, 12, 48]} />
+        <meshBasicMaterial color={color} transparent opacity={busy ? 1 : 0.55} />
+      </mesh>
+      <mesh>
+        <octahedronGeometry args={[0.35, 0]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={busy ? 1.4 : 0.45}
+          metalness={0.4}
+          roughness={0.3}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function DriverMesh({ hot, tool }: { hot: boolean; tool: boolean }) {
+  const core = useRef<THREE.Mesh>(null);
+  const color = COLORS.driver;
+  const busy = hot || tool;
+  useFrame((_, dt) => {
+    if (core.current) {
+      core.current.rotation.x += dt * (busy ? 2.5 : 0.4);
+      core.current.rotation.y += dt * (busy ? 1.8 : 0.3);
+    }
+  });
+  return (
+    <group>
+      <mesh ref={core}>
+        <boxGeometry args={[0.7, 0.45, 0.9]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={busy ? 1.6 : 0.4}
+          metalness={0.5}
+          roughness={0.25}
+        />
+      </mesh>
+      <mesh position={[0, 0.35, 0]}>
+        <coneGeometry args={[0.2, 0.35, 4]} />
+        <meshBasicMaterial color={color} transparent opacity={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
 function AgentBody({ agent }: { agent: SceneAgent }) {
   const hot = agent.hot;
   const tool = agent.state === "tool";
@@ -397,21 +460,27 @@ function AgentBody({ agent }: { agent: SceneAgent }) {
   const pos = NODE_POS[agent.id];
 
   const Icon =
-    agent.id === "coordinator"
+    agent.id === "composer"
       ? Cpu
-      : agent.id === "sentinel"
+      : agent.id === "clerk"
         ? Search
-        : agent.id === "oracle"
+        : agent.id === "solver"
           ? ShieldAlert
-          : Zap;
+          : agent.id === "autopilot"
+            ? Gauge
+            : agent.id === "driver"
+              ? Truck
+              : Zap;
 
   return (
     <group position={pos}>
       <GlowPedestal color={color} hot={hot || tool} />
-      {agent.id === "coordinator" && <OrchestratorMesh hot={hot} tool={tool} />}
-      {agent.id === "sentinel" && <SentinelMesh hot={hot} tool={tool} />}
-      {agent.id === "oracle" && <OracleMesh hot={hot} tool={tool} />}
-      {agent.id === "broker" && <BrokerMesh hot={hot} tool={tool} />}
+      {agent.id === "composer" && <OrchestratorMesh hot={hot} tool={tool} />}
+      {agent.id === "clerk" && <SentinelMesh hot={hot} tool={tool} />}
+      {agent.id === "solver" && <OracleMesh hot={hot} tool={tool} />}
+      {agent.id === "payer" && <BrokerMesh hot={hot} tool={tool} />}
+      {agent.id === "autopilot" && <AutopilotMesh hot={hot} tool={tool} />}
+      {agent.id === "driver" && <DriverMesh hot={hot} tool={tool} />}
       <HudBadge
         color={color}
         role={agent.role}
@@ -421,7 +490,7 @@ function AgentBody({ agent }: { agent: SceneAgent }) {
         hot={hot || tool}
         Icon={Icon}
       />
-      {agent.id === "oracle" && tool && (
+      {agent.id === "solver" && tool && (
         <Html center distanceFactor={14} position={[0, 2.35, 0]} style={{ pointerEvents: "none" }}>
           <Activity className="h-3 w-3 animate-pulse" style={{ color }} />
         </Html>
@@ -696,35 +765,53 @@ function edgeColor(edge: SceneEdge): string {
   return COLORS.hub;
 }
 
-/** Always-on soft paths from orchestrator + live dock streams */
+/** Always-on soft paths from composer + live dock streams */
 function IdentityPaths({ scene }: { scene: AgentScene }) {
   const orchEdges: SceneEdge[] = [
     {
-      key: "orch-sentinel",
-      from: "coordinator",
-      to: "sentinel",
+      key: "orch-clerk",
+      from: "composer",
+      to: "clerk",
       kind: "orch",
       live:
-        scene.agents.find((a) => a.id === "coordinator")?.hot === true ||
-        scene.agents.find((a) => a.id === "sentinel")?.hot === true,
+        scene.agents.find((a) => a.id === "composer")?.hot === true ||
+        scene.agents.find((a) => a.id === "clerk")?.hot === true,
     },
     {
-      key: "orch-oracle",
-      from: "coordinator",
-      to: "oracle",
+      key: "orch-solver",
+      from: "composer",
+      to: "solver",
       kind: "orch",
       live:
-        scene.agents.find((a) => a.id === "coordinator")?.hot === true ||
-        scene.agents.find((a) => a.id === "oracle")?.hot === true,
+        scene.agents.find((a) => a.id === "composer")?.hot === true ||
+        scene.agents.find((a) => a.id === "solver")?.hot === true,
     },
     {
-      key: "orch-broker",
-      from: "coordinator",
-      to: "broker",
+      key: "orch-payer",
+      from: "composer",
+      to: "payer",
       kind: "orch",
       live:
-        scene.agents.find((a) => a.id === "coordinator")?.hot === true ||
-        scene.agents.find((a) => a.id === "broker")?.hot === true,
+        scene.agents.find((a) => a.id === "composer")?.hot === true ||
+        scene.agents.find((a) => a.id === "payer")?.hot === true,
+    },
+    {
+      key: "orch-autopilot",
+      from: "composer",
+      to: "autopilot",
+      kind: "orch",
+      live:
+        scene.agents.find((a) => a.id === "composer")?.hot === true ||
+        scene.agents.find((a) => a.id === "autopilot")?.hot === true,
+    },
+    {
+      key: "orch-driver",
+      from: "composer",
+      to: "driver",
+      kind: "orch",
+      live:
+        scene.agents.find((a) => a.id === "composer")?.hot === true ||
+        scene.agents.find((a) => a.id === "driver")?.hot === true,
     },
   ];
 
@@ -738,24 +825,23 @@ function IdentityPaths({ scene }: { scene: AgentScene }) {
   const ledgerLive = scene.externals.find((e) => e.id === "ledger")?.live === true;
 
   const withToolStreams = merged.map((e) => {
-    if (e.key === "ext-graph" && agents.sentinel?.state === "tool") {
+    if (e.key === "ext-graph" && agents.clerk?.state === "tool") {
       return { ...e, live: true };
     }
-    if (e.key === "ext-messari" && agents.oracle?.state === "tool") {
+    if (e.key === "ext-messari" && agents.solver?.state === "tool") {
       return { ...e, live: true };
     }
-    if (e.key === "ext-hedera" && agents.broker?.state === "tool") {
-      const t = (agents.broker.activeTool ?? "").toLowerCase();
-      // x402 path only — not HITL propose
+    if (e.key === "ext-hedera" && agents.payer?.state === "tool") {
+      const t = (agents.payer.activeTool ?? "").toLowerCase();
       if (!t.includes("propose") && !t.includes("hitl")) return { ...e, live: true };
     }
     if (
       (e.key === "ext-ledger" || e.key === "orch-ledger") &&
       (ledgerLive ||
-        agents.broker?.state === "tool" ||
-        (agents.broker?.hot &&
-          (agents.broker.badge.includes("HITL") ||
-            agents.broker.badge.includes("LEDGER"))))
+        agents.composer?.state === "tool" ||
+        (agents.composer?.hot &&
+          (agents.composer.badge.includes("HITL") ||
+            agents.composer.badge.includes("LEDGER"))))
     ) {
       return { ...e, live: true };
     }

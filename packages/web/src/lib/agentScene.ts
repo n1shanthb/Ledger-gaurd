@@ -2,12 +2,11 @@ import type { AgentId, GraphState, NodeState } from "@/lib/agentEvents";
 
 export type ExternalId = "graph" | "messari" | "hedera" | "ledger";
 
-
 export type SceneAgent = {
   id: AgentId;
   title: string;
   role: string;
-  accent: "graph" | "oracle" | "broker" | "hub";
+  accent: "graph" | "oracle" | "broker" | "hub" | "autopilot" | "driver";
   state: NodeState;
   model?: string;
   activeTool?: string;
@@ -39,64 +38,106 @@ export type AgentScene = {
   gate: GraphState["gate"];
 };
 
-const ROLE: Record<AgentId, { title: string; role: string; accent: SceneAgent["accent"] }> = {
-  coordinator: {
-    title: "Orchestrator",
+const ROLE: Record<
+  AgentId,
+  { title: string; role: string; accent: SceneAgent["accent"] }
+> = {
+  composer: {
+    title: "Composer",
     role: "Router",
     accent: "hub",
   },
-  sentinel: {
-    title: "Data Explorer",
-    role: "Sentinel",
+  clerk: {
+    title: "Clerk",
+    role: "Status",
     accent: "graph",
   },
-  oracle: {
-    title: "Risk Analyst",
-    role: "Oracle",
+  solver: {
+    title: "Market Solver",
+    role: "Risk",
     accent: "oracle",
   },
-  broker: {
-    title: "Execution Agent",
-    role: "Broker",
+  payer: {
+    title: "Payer",
+    role: "x402",
     accent: "broker",
+  },
+  autopilot: {
+    title: "Autopilot",
+    role: "Watch",
+    accent: "autopilot",
+  },
+  driver: {
+    title: "Driver",
+    role: "Fill",
+    accent: "driver",
   },
 };
 
 const IDLE_BADGE: Record<AgentId, string> = {
-  coordinator: "AWAITING PIPELINE",
-  sentinel: "STANDBY · POLICIES",
-  oracle: "STANDBY · RISK",
-  broker: "STANDBY · x402",
+  composer: "AWAITING PIPELINE",
+  clerk: "STANDBY · POLICIES",
+  solver: "STANDBY · RISK",
+  payer: "STANDBY · x402",
+  autopilot: "STANDBY · PAY-ON-HIT",
+  driver: "STANDBY · BASE FILL",
 };
 
-function badgeFor(id: AgentId, state: NodeState, tool?: string, last?: string): string {
+function badgeFor(
+  id: AgentId,
+  state: NodeState,
+  tool?: string,
+  last?: string,
+): string {
   if (state === "error") return "ERROR";
   if (state === "done") return "COMPLETE";
   if (tool) {
     const t = tool.toLowerCase();
-    if (t.includes("propose") || t.includes("hitl") || t.includes("clear") || t.includes("sign")) {
+    if (
+      t.includes("propose") ||
+      t.includes("hitl") ||
+      t.includes("clear") ||
+      t.includes("sign")
+    ) {
       return "AWAITING LEDGER HITL CLEAR-SIGN";
     }
-    if (t.includes("listactive") || t.includes("subgraph") || t.includes("mcp")) {
+    if (
+      t.includes("listactive") ||
+      t.includes("subgraph") ||
+      t.includes("mcp") ||
+      t.includes("payment")
+    ) {
       return "READING LGA SUBGRAPH";
     }
     if (t.includes("policy") && !t.includes("propose")) {
       return "READING LGA SUBGRAPH";
     }
-    if (t.includes("swapgate") || t.includes("decide") || t.includes("borrow") || t.includes("pool")) {
+    if (
+      t.includes("swapgate") ||
+      t.includes("decide") ||
+      t.includes("borrow") ||
+      t.includes("pool")
+    ) {
       return "EVALUATING CROSS PROTOCOL RISK";
     }
     if (t.includes("pyth") || t.includes("price")) {
       return "QUERYING PYTH ORACLE";
     }
-    if (t.includes("execut") || t.includes("x402") || t.includes("payment") || t.includes("trigger")) {
+    if (
+      t.includes("execut") ||
+      t.includes("x402") ||
+      t.includes("trigger") ||
+      t.includes("postpaid")
+    ) {
       return "PREPARING HEDERA x402 PAYMENT";
     }
     return `CALLING · ${tool}`;
   }
   if (state === "active" || state === "tool") {
-    if (id === "coordinator") return "ROUTING AGENTS";
-    if (id === "broker") return "HITL · LEDGER OR x402";
+    if (id === "composer") return "ROUTING AGENTS";
+    if (id === "payer") return "x402 · PAID TRIGGER";
+    if (id === "autopilot") return "WATCHING BANDS";
+    if (id === "driver") return "BASE EXECUTE";
     if (last) return last.slice(0, 42).toUpperCase();
     return "THINKING";
   }
@@ -139,7 +180,8 @@ function externalForTool(tool: string): ExternalId | null {
     t.includes("x402") ||
     t.includes("payment") ||
     t.includes("trigger") ||
-    t.includes("pay")
+    t.includes("pay") ||
+    t.includes("postpaid")
   ) {
     return "hedera";
   }
@@ -147,9 +189,10 @@ function externalForTool(tool: string): ExternalId | null {
 }
 
 const AGENT_EXTERNAL: Partial<Record<AgentId, ExternalId>> = {
-  sentinel: "graph",
-  oracle: "messari",
-  broker: "hedera",
+  clerk: "graph",
+  solver: "messari",
+  payer: "hedera",
+  driver: "hedera",
 };
 
 export function deriveScene(graph: GraphState): AgentScene {
@@ -163,17 +206,16 @@ export function deriveScene(graph: GraphState): AgentScene {
     if (ext) externalLive.add(ext);
   }
 
-  // Pulse Ledger HITL when broker is working on propose / gate-clear path
-  const broker = graph.nodes.broker;
-  const brokerTool = (broker.activeTool ?? broker.last ?? "").toLowerCase();
+  const composer = graph.nodes.composer;
+  const composerTool = (composer.activeTool ?? composer.last ?? "").toLowerCase();
   const ledgerHitl =
     externalLive.has("ledger") ||
-    (broker.state === "tool" &&
-      (brokerTool.includes("propose") ||
-        brokerTool.includes("hitl") ||
-        brokerTool.includes("sign"))) ||
-    (broker.state === "active" &&
-      (brokerTool.includes("propose") || brokerTool.includes("hitl")));
+    (composer.state === "tool" &&
+      (composerTool.includes("propose") ||
+        composerTool.includes("hitl") ||
+        composerTool.includes("sign"))) ||
+    (composer.state === "active" &&
+      (composerTool.includes("propose") || composerTool.includes("hitl")));
 
   if (ledgerHitl) externalLive.add("ledger");
 
@@ -229,13 +271,14 @@ export function deriveScene(graph: GraphState): AgentScene {
 
   const orchLive = (to: AgentId) => {
     const hit =
-      edgeLive.get(`coordinator-${to}`) ?? edgeLive.get(`${to}-coordinator`);
-    const agentHot = graph.nodes[to].state === "active" || graph.nodes[to].state === "tool";
-    const coordHot =
-      graph.nodes.coordinator.state === "active" ||
-      graph.nodes.coordinator.state === "tool";
+      edgeLive.get(`composer-${to}`) ?? edgeLive.get(`${to}-composer`);
+    const agentHot =
+      graph.nodes[to].state === "active" || graph.nodes[to].state === "tool";
+    const hubHot =
+      graph.nodes.composer.state === "active" ||
+      graph.nodes.composer.state === "tool";
     return {
-      live: Boolean(hit?.live) || (agentHot && coordHot) || agentHot,
+      live: Boolean(hit?.live) || (agentHot && hubHot) || agentHot,
       label: hit?.label,
     };
   };
@@ -247,44 +290,72 @@ export function deriveScene(graph: GraphState): AgentScene {
 
   const edges: SceneEdge[] = [
     {
-      key: "orch-sentinel",
-      from: "coordinator",
-      to: "sentinel",
+      key: "orch-clerk",
+      from: "composer",
+      to: "clerk",
       kind: "orch",
-      ...orchLive("sentinel"),
+      ...orchLive("clerk"),
     },
     {
-      key: "orch-oracle",
-      from: "coordinator",
-      to: "oracle",
+      key: "orch-solver",
+      from: "composer",
+      to: "solver",
       kind: "orch",
-      ...orchLive("oracle"),
+      ...orchLive("solver"),
     },
     {
-      key: "orch-broker",
-      from: "coordinator",
-      to: "broker",
+      key: "orch-payer",
+      from: "composer",
+      to: "payer",
       kind: "orch",
-      ...orchLive("broker"),
+      ...orchLive("payer"),
     },
     {
-      key: "sentinel-oracle",
-      from: "sentinel",
-      to: "oracle",
+      key: "orch-autopilot",
+      from: "composer",
+      to: "autopilot",
+      kind: "orch",
+      ...orchLive("autopilot"),
+    },
+    {
+      key: "orch-driver",
+      from: "composer",
+      to: "driver",
+      kind: "orch",
+      ...orchLive("driver"),
+    },
+    {
+      key: "clerk-solver",
+      from: "clerk",
+      to: "solver",
       kind: "peer",
-      ...peerLive("sentinel", "oracle"),
+      ...peerLive("clerk", "solver"),
     },
     {
-      key: "oracle-broker",
-      from: "oracle",
-      to: "broker",
+      key: "solver-payer",
+      from: "solver",
+      to: "payer",
       kind: "peer",
-      ...peerLive("oracle", "broker"),
+      ...peerLive("solver", "payer"),
+    },
+    {
+      key: "autopilot-payer",
+      from: "autopilot",
+      to: "payer",
+      kind: "peer",
+      ...peerLive("autopilot", "payer"),
+    },
+    {
+      key: "payer-driver",
+      from: "payer",
+      to: "driver",
+      kind: "peer",
+      ...peerLive("payer", "driver"),
     },
     {
       key: "ext-graph",
       from: "graph",
-      to: "sentinel",
+      to: "clerk",
       kind: "external",
       live: externalLive.has("graph"),
       label: externalLive.has("graph") ? "subgraph" : undefined,
@@ -292,14 +363,14 @@ export function deriveScene(graph: GraphState): AgentScene {
     {
       key: "ext-messari",
       from: "messari",
-      to: "oracle",
+      to: "solver",
       kind: "external",
       live: externalLive.has("messari"),
       label: externalLive.has("messari") ? "metrics" : undefined,
     },
     {
       key: "ext-hedera",
-      from: "broker",
+      from: "payer",
       to: "hedera",
       kind: "external",
       live: externalLive.has("hedera"),
@@ -307,7 +378,7 @@ export function deriveScene(graph: GraphState): AgentScene {
     },
     {
       key: "ext-ledger",
-      from: "broker",
+      from: "composer",
       to: "ledger",
       kind: "external",
       live: externalLive.has("ledger"),
@@ -315,7 +386,7 @@ export function deriveScene(graph: GraphState): AgentScene {
     },
     {
       key: "orch-ledger",
-      from: "coordinator",
+      from: "composer",
       to: "ledger",
       kind: "external",
       live: externalLive.has("ledger"),

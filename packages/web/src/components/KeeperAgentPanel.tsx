@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AgentOpsGraph } from "@/components/AgentOpsGraph";
+import { PolicyDraftCard } from "@/components/PolicyDraftCard";
 import { useAgentRun } from "@/hooks/useAgentRun";
 
 type Payment = {
@@ -17,9 +18,18 @@ type Payment = {
 };
 
 export function KeeperAgentPanel() {
-  const { graph, busy, err, run, reset, keeperBase } = useAgentRun();
+  const {
+    graph,
+    busy,
+    err,
+    run,
+    reset,
+    confirmDraft,
+    setPolicyDraft,
+    keeperBase,
+  } = useAgentRun();
   const [input, setInput] = useState(
-    "Should I execute? Check policies and swap gate first.",
+    "Protect my ETH if it dumps tonight — draft a stop-loss I can clear-sign.",
   );
   const [payments, setPayments] = useState<Payment[]>([]);
   const [health, setHealth] = useState<string>("…");
@@ -78,21 +88,22 @@ export function KeeperAgentPanel() {
       <AgentOpsGraph graph={graph} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <div className="rounded-xl border border-line bg-panel p-4">
+        <div className="space-y-3 rounded-xl border border-line bg-panel p-4">
           <p className="font-mono text-[11px] text-mute">{health}</p>
-          <p className="mt-2 text-sm text-mute">
-            Coordinator → Sentinel / Oracle / Broker. One OpenRouter key, per-agent
-            models. Viz animates only from SSE events — not mock loops. Master key
-            never leaves Ledger; Key Ring holds keeper secrets.
+          <p className="text-sm text-mute">
+            Composer drafts policies from natural language (questions + form).
+            Clerk / Solver / Payer · Autopilot + Driver on pay-on-hit. Viz from
+            SSE only. Master key never leaves Ledger; Key Ring holds keeper
+            secrets.
           </p>
           <textarea
-            className="mt-3 w-full rounded-lg border border-mist bg-ink/40 px-3 py-2 text-sm text-paper outline-none focus:border-signal"
+            className="w-full rounded-lg border border-mist bg-ink/40 px-3 py-2 text-sm text-paper outline-none focus:border-signal"
             rows={3}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={busy}
           />
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={busy || !input.trim()}
@@ -110,9 +121,19 @@ export function KeeperAgentPanel() {
               Reset graph
             </button>
           </div>
-          {err && <p className="mt-2 text-sm text-kill">{err}</p>}
+          {err && <p className="text-sm text-kill">{err}</p>}
+          {graph.policyDraft && (
+            <PolicyDraftCard
+              draft={graph.policyDraft}
+              busy={busy}
+              onChange={(d) => setPolicyDraft(d)}
+              onConfirm={(d, includeAddons) => {
+                void confirmDraft(d, includeAddons);
+              }}
+            />
+          )}
           {graph.reply && (
-            <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-line bg-ink/50 p-3 text-sm text-paper">
+            <pre className="whitespace-pre-wrap rounded-lg border border-line bg-ink/50 p-3 text-sm text-paper">
               {graph.reply}
             </pre>
           )}
@@ -153,7 +174,7 @@ export function KeeperAgentPanel() {
         </div>
         {payments.length === 0 && (
           <p className="mt-3 text-sm text-mute">
-            No attempts yet. Broker tool or npm run pay.
+            No attempts yet. Payer path or npm run pay.
           </p>
         )}
         <ul className="mt-3 space-y-3">

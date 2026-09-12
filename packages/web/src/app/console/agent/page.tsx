@@ -18,9 +18,10 @@ export default function AgentPage() {
             Multi-agent ops
           </h1>
           <p className="mt-4 max-w-2xl text-mute">
-            Coordinator routes to Policy Sentinel, Market Oracle, and Execution
-            Broker. Live graph is driven by SSE tool events — same decide/gate
-            APIs as Compose.
+            Composer routes to Clerk, Market Solver, and Payer. Autopilot + Driver
+            own pay-on-hit → fill (no LLM). Live graph is driven by SSE tool events
+            — same decide/gate APIs as Compose. Master key never leaves Ledger;
+            Key Ring holds keeper secrets.
           </p>
           <ConsoleNav />
           <div className="mt-10">
