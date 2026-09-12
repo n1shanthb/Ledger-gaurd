@@ -1,0 +1,7 @@
+[lga] keeper :3001  POST /trigger + /quote are x402-gated
+[lga] OpenRouter: enrolled
+[lga] autopoll off — execution only via paid POST /trigger (or pay-on-hit)
+[lga] Autopilot pay-on-hit enabled (PAY_ON_HIT=1)
+[lga] pay-on-hit Autopilot watch every 30000ms → http://127.0.0.1:3001
+[lga] pay-on-hit Autopilot: no band hits
+[lga] pay-on-hit Autopilot: no band hits
