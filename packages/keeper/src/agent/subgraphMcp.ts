@@ -45,7 +45,7 @@ export function classifyReceiptQuestion(question: string): McpQueryKind {
   ) {
     return "receipts";
   }
-  if (/\b(payment|audit|hcs|x402|hedera payment)\b/.test(q)) {
+  if (/\b(payment|audit|hcs|x402|hedera|agent id|agent identity|who paid)\b/.test(q)) {
     return "audits";
   }
   if (/\b(polic|active|stop.?loss|take.?profit|guardian)\b/.test(q)) {
@@ -99,7 +99,9 @@ export async function queryReceiptGraphNl(
   return {
     source: "subgraph-mcp-consumer",
     pitch:
-      "LGA Use Case agent/app — Clerk consumes live Receipt Graph via Subgraph MCP path",
+      kind === "audits"
+        ? "Receipt Graph PaymentAudit bridges Hedera (hcsRef / hederaPaymentRef) ↔ Base — Clerk reads both planes"
+        : "LGA Use Case agent/app — Clerk consumes live Receipt Graph via Subgraph MCP path",
     studioUrl: url,
     question,
     kind,

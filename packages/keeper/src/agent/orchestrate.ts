@@ -114,6 +114,7 @@ async function runPayer(opts: {
       capabilityId: cap.id,
       broker,
       mintInternal: false,
+      agentId: "payer",
     });
     const summary = `x402 /trigger status=${paid.status} cap=${cap.id}`;
     opts.emit({

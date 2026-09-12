@@ -23,16 +23,21 @@ export function createPaidFetch(secrets: KeeperSecrets) {
   });
 }
 
+/** Strip accidental /trigger or /quote so KEEPER_URL can be host or full path. */
+function keeperRoot(base?: string): string {
+  const raw = base ?? process.env.KEEPER_URL ?? "http://127.0.0.1:3001";
+  return raw
+    .replace(/\/trigger\/?$/, "")
+    .replace(/\/quote\/?$/, "")
+    .replace(/\/$/, "");
+}
+
 export function triggerUrl(base?: string): string {
-  const raw = base ?? process.env.KEEPER_URL ?? "http://127.0.0.1:3001/trigger";
-  if (raw.endsWith("/trigger")) return raw;
-  return `${raw.replace(/\/$/, "")}/trigger`;
+  return `${keeperRoot(base)}/trigger`;
 }
 
 export function quoteUrl(base?: string): string {
-  const raw = base ?? process.env.KEEPER_URL ?? "http://127.0.0.1:3001";
-  const root = raw.replace(/\/trigger\/?$/, "").replace(/\/$/, "");
-  return `${root}/quote`;
+  return `${keeperRoot(base)}/quote`;
 }
 
 export type PaidTriggerResult = {
@@ -59,6 +64,7 @@ export function hashscanFromPayment(
     const j = JSON.parse(decoded) as Record<string, unknown>;
     const tx =
       (typeof j.transactionId === "string" && j.transactionId) ||
+      (typeof j.transaction === "string" && j.transaction) ||
       (typeof j.txId === "string" && j.txId) ||
       (typeof j.transaction_id === "string" && j.transaction_id) ||
       null;
@@ -82,6 +88,8 @@ export type PaidTriggerOpts = {
   mintInternal?: boolean;
   broker?: CapabilityBroker;
   ttlMs?: number;
+  /** Stamped on host HCS memo + PaymentAudit bridge (payer | autopilot | cli). */
+  agentId?: string;
 };
 
 export async function postPaidTrigger(
@@ -106,9 +114,13 @@ export async function postPaidTrigger(
 
   const paid = createPaidFetch(secrets);
   const url = path === "quote" ? quoteUrl() : triggerUrl();
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (opts.agentId) headers["x-lga-agent"] = opts.agentId;
   const res = await paid(url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers,
     body: "{}",
   });
   const body = await res.text();

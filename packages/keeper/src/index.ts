@@ -8,6 +8,13 @@ import { newAttemptId, recentPayments, recordPayment } from "./payments";
 import { hashscanFromPayment } from "./paidTrigger";
 import { submitHcsMemo, hcsHashscanUrl } from "./hcsAudit";
 import { recordOnChainPaymentAudit } from "./paymentAuditTx";
+import {
+  agentRosterStatus,
+  ensureAgentRoster,
+  parseAgentHeader,
+  tagHederaPaymentRef,
+  paymentAuditBridgeStatus,
+} from "./agentIdentity";
 import { agentChat } from "./agent/chat";
 import type { AgentEvent } from "./agent/types";
 import { startPayOnHit } from "./payOnHit";
@@ -24,7 +31,7 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "content-type, authorization, accept",
+    "content-type, authorization, accept, x-lga-agent, payment-response, PAYMENT-RESPONSE",
   );
   if (req.method === "OPTIONS") {
     res.status(204).end();
@@ -72,9 +79,10 @@ async function handlePaidCycle(
 ) {
   const attemptId = newAttemptId();
   const execute = path === "trigger";
+  const agentId = parseAgentHeader(req.headers["x-lga-agent"]);
   try {
     if (execute) {
-      console.log("[lga] Driver /trigger paid cycle starting");
+      console.log(`[lga] Driver /trigger paid cycle starting (agent=${agentId})`);
     }
     const r = await runCycle(secrets, { execute });
     const paymentResponse =
@@ -82,25 +90,48 @@ async function handlePaidCycle(
       (req.headers["PAYMENT-RESPONSE"] as string | undefined) ??
       null;
     const hashscanUrl = hashscanFromPayment(secrets.hederaNetwork, paymentResponse);
-    let hcsRef: string | null = null;
-    if (execute) {
-      hcsRef = await submitHcsMemo(secrets, {
-        attemptId,
-        path,
-        executed: r.executed,
-        paymentResponse: paymentResponse?.slice(0, 500) ?? null,
-      });
-      for (const hit of r.executed) {
-        if (!hit.tx) continue;
+    const hederaPaymentRef = tagHederaPaymentRef(
+      hashscanUrl ?? paymentResponse?.slice(0, 120) ?? "",
+      agentId,
+    );
+    const hcsRef = await submitHcsMemo(secrets, {
+      type: "lga.payment",
+      attemptId,
+      path,
+      agentId,
+      evaluated: r.evaluated,
+      executed: r.executed.map((h) => ({
+        policyId: h.policyId,
+        trigger: h.trigger,
+        tx: h.tx ?? null,
+      })),
+      paymentResponse: paymentResponse?.slice(0, 500) ?? null,
+      bridge: "PaymentAudit → Receipt Graph",
+    });
+
+    // Graph ↔ Hedera: always attempt PaymentAudit (no-op if PAYMENT_AUDIT_LOG unset)
+    const hits = r.executed.filter((h) => h.tx);
+    if (hits.length) {
+      for (const hit of hits) {
         await recordOnChainPaymentAudit(secrets, {
           attemptId,
           policyId: hit.policyId,
           baseTx: hit.tx,
-          hederaPaymentRef: hashscanUrl ?? paymentResponse?.slice(0, 120) ?? "",
+          hederaPaymentRef,
           hcsRef: hcsRef ?? "",
         });
       }
+    } else if (hcsRef || hederaPaymentRef) {
+      await recordOnChainPaymentAudit(secrets, {
+        attemptId,
+        policyId: `0x${"0".repeat(64)}`,
+        hederaPaymentRef,
+        hcsRef: hcsRef ?? "",
+      });
     }
+
+    const hcsTopicUrl = hcsHashscanUrl(secrets.hederaNetwork, hcsRef);
+    const bridge = paymentAuditBridgeStatus(secrets);
     recordPayment({
       attemptId,
       paidAt: Date.now(),
@@ -110,15 +141,19 @@ async function handlePaidCycle(
       paymentResponse,
       hashscanUrl,
       hcsRef,
+      hcsTopicUrl,
+      agentId,
       note: r.note,
     });
     res.json({
       attemptId,
       ...r,
+      agentId,
       hashscanUrl,
       hcsRef,
-      hcsTopicUrl: hcsHashscanUrl(secrets.hederaNetwork, hcsRef),
+      hcsTopicUrl,
       mcp: mcpHint(secrets.graphUrl),
+      graphBridge: bridge,
     });
   } catch (err) {
     res.status(500).json({ error: String(err), attemptId });
@@ -133,6 +168,8 @@ app.get("/health", (_req, res) => {
     mcp: mcpHint(secrets.graphUrl),
     keyRing: ringStatus(secrets),
     capabilityBroker: broker.status(),
+    hederaAgents: agentRosterStatus(secrets),
+    graphBridge: paymentAuditBridgeStatus(secrets),
     network: secrets.hederaNetwork,
     openRouter: Boolean(secrets.openRouterApiKey),
     openRouterModels: secrets.openRouterModels,
@@ -291,6 +328,7 @@ app.listen(port, () => {
   console.log(`[lga] keeper :${port}  POST /trigger + /quote are x402-gated`);
   console.log(`[lga] Key Ring: ${kr.source} headless=${kr.headless}`);
   console.log(`[lga] OpenRouter: ${secrets.openRouterApiKey ? "enrolled" : "missing"}`);
+  void ensureAgentRoster(secrets);
   if (pollMs > 0) {
     console.log(`[lga] DEV autopoll every ${pollMs}ms (prize mode: POLL_MS=0)`);
     void pollOnce();

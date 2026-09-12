@@ -30,7 +30,9 @@ export function startPayOnHit(secrets: KeeperSecrets) {
           `[lga] pay-on-hit Autopilot: ${h.trigger} ${h.pol.id.slice(0, 10)}… spot=${Number(h.spot) / 1e8} → paid /trigger`,
         );
       }
-      const result = await postPaidTrigger(secrets, "trigger");
+      const result = await postPaidTrigger(secrets, "trigger", {
+        agentId: "autopilot",
+      });
       console.log("[lga] pay-on-hit Autopilot status", result.status, result.body.slice(0, 400));
       if (result.hashscanUrl) console.log("[lga] hashscan", result.hashscanUrl);
       if (result.status >= 200 && result.status < 300) {

@@ -17,6 +17,9 @@ export type PaymentAttempt = {
   paymentResponse?: string | null;
   hashscanUrl?: string | null;
   hcsRef?: string | null;
+  hcsTopicUrl?: string | null;
+  /** Hedera-named consumer: payer | autopilot | cli | … */
+  agentId?: string | null;
   note?: string;
 };
 

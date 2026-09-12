@@ -3,7 +3,7 @@ import { postPaidTrigger } from "./paidTrigger";
 
 const secrets = loadSecrets();
 const path = process.argv.includes("--quote") ? "quote" : "trigger";
-const result = await postPaidTrigger(secrets, path);
+const result = await postPaidTrigger(secrets, path, { agentId: "cli" });
 
 console.log("[lga] pay status", result.status);
 console.log("[lga] pay body", result.body);

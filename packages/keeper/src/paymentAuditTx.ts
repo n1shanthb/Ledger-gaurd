@@ -33,6 +33,15 @@ function toBytes32(s: string): Hex {
   return keccak256(toBytes(s));
 }
 
+export function paymentAuditConfigured(secrets: KeeperSecrets): boolean {
+  const addr = (
+    process.env.PAYMENT_AUDIT_LOG?.trim() ||
+    secrets.paymentAuditLog?.trim() ||
+    ""
+  ).trim();
+  return Boolean(addr && addr !== "0x");
+}
+
 export async function recordOnChainPaymentAudit(
   secrets: KeeperSecrets,
   opts: {
@@ -43,13 +52,12 @@ export async function recordOnChainPaymentAudit(
     hcsRef: string;
   },
 ): Promise<Hex | null> {
-  const addr = (process.env.PAYMENT_AUDIT_LOG ?? secrets.paymentAuditLog) as
-    | Hex
-    | undefined;
-  if (!addr || addr === "0x") {
+  if (!paymentAuditConfigured(secrets)) {
     console.log("[lga] PAYMENT_AUDIT_LOG unset — skip on-chain audit");
     return null;
   }
+  const addr = (process.env.PAYMENT_AUDIT_LOG?.trim() ||
+    secrets.paymentAuditLog.trim()) as Hex;
 
   try {
     const account = privateKeyToAccount(secrets.sessionKey);

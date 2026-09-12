@@ -227,6 +227,7 @@ export async function runTool(
           capabilityId: cap.id,
           broker,
           mintInternal: false,
+          agentId: "payer",
         });
         return {
           out: redactSecrets(
@@ -242,12 +243,24 @@ export async function runTool(
           ok: true,
         };
       }
-      case "getRecentPayments":
+      case "getRecentPayments": {
+        const rows = recentPayments(Number(args.limit ?? 10)).map((p) => {
+          const hcsTopicUrl =
+            p.hcsRef?.startsWith("hcs://")
+              ? `https://hashscan.io/${
+                  ctx.secrets.hederaNetwork === "hedera:mainnet"
+                    ? "mainnet"
+                    : "testnet"
+                }/topic/${p.hcsRef.replace("hcs://", "").split("/")[0]}`
+              : null;
+          return { ...p, hcsTopicUrl };
+        });
         return {
-          out: JSON.stringify(recentPayments(Number(args.limit ?? 10))),
+          out: JSON.stringify(rows),
           summary: "payments listed",
           ok: true,
         };
+      }
       default:
         return {
           out: JSON.stringify({ error: `unknown tool ${name}` }),
