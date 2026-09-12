@@ -114,11 +114,33 @@ Events: `run_start` → `agent_start` / `tool_*` / `edge` / `gate` → `run_end`
 
 Gate: Payer skips `postPaidTrigger` if Solver gate `proceed=false` unless user explicitly overrides.
 
-## HCS + PaymentAudit (Graph)
+## HCS + PaymentAudit (Graph ↔ Hedera)
 
-- Optional `HCS_TOPIC_ID` in ring → memo after settle.
-- Optional `PAYMENT_AUDIT_LOG` (deploy `PaymentAuditLog.sol`) → Base event → subgraph `PaymentAudit` with `hcsRef` / payment ref.
-- **Composable:** use Subgraph MCP + Receipt Graph (see [docs/SUBGRAPH_MCP.md](../../docs/SUBGRAPH_MCP.md)). HCS fields alone ≠ Composable.
+- `HCS_TOPIC_ID` → payment memos + light agent roster (`lga.agent.roster`) on the same topic.
+- Consumers send `x-lga-agent: payer|autopilot|cli` (honor-system) — HCS JSON + payments + panel.
+- `hederaPaymentRef` always tagged `agent=…` for Graph rows (fill and no-fill).
+- `PAYMENT_AUDIT_LOG` on Base → subgraph `PaymentAudit`. If unset, `/health.graphBridge.configured=false` (HCS still works).
+- Pin roster: `HCS_ROSTER_REF=hcs://topic/seq` after first publish.
+- Clerk: payments/HCS/who-paid → Studio audits (may be empty until audit log fires).
+
+### Hedera extras (Phase D)
+
+| Extra | Status |
+|---|---|
+| HCS payment sink | live on `/trigger` — [phase-d-hcs.md](../../docs/proofs/phase-d-hcs.md) |
+| Gated `POST /quote` | live — unpaid 402 + `npm run pay:quote` |
+| Light agent identity | coded + unit smoke — live after redeploy — [phase-d.md](../../docs/proofs/phase-d.md) |
+| Graph ↔ Hedera | coded; Studio `paymentAudits` empty until `PAYMENT_AUDIT_LOG` set |
+
+```bash
+# unpaid quote → 402
+curl -i -X POST "$KEEPER_URL/quote" -H "content-type: application/json" -d "{}"
+
+# paid quote (dry-run eval)
+WALLET_PASS=… KEEPER_URL=$KEEPER_URL npm run pay:quote
+```
+
+Proofs: [docs/proofs/phase-d.md](../../docs/proofs/phase-d.md).
 
 ## Env (non-secret)
 

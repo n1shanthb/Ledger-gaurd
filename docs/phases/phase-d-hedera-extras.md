@@ -12,7 +12,8 @@ If time remains after A–C, add Hedera **extra-credit** items: verifiable **HCS
 
 1. **HCS payment sink** — on settle / paid trigger, append memo or HCS message; Clerk can surface Hashscan link  
 2. **Gated `/quote` or `/solve`** — pay-per-call risk/Messari gate; Payer or external agent pays; Blocky402  
-3. **HCS-14 / agent identity** — register or document on-chain ids for composer/autopilot/solver/payer/driver/clerk  
+3. **HCS-14 / agent identity** — light roster + `agentId` on payment memos (full ERC-8004 registry optional)  
+4. **Graph ↔ Hedera** — every paid settle → Base `PaymentAudit` with `hcsRef` for Clerk / Studio
 
 ## Out of scope
 

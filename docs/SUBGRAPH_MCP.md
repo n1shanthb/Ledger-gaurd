@@ -118,6 +118,8 @@ Composer → **Clerk** (Receipt Graph status) → **Market Solver** (code-first 
 
 (`paymentAudits` via PaymentAuditLog `0x689ae72e…` on Base → subgraph v0.0.4.)
 
+**Graph ↔ Hedera:** paid x402 settles write HCS memos (`hcs://topic/seq`); keeper emits `PaymentAudit` on Base with `hcsRef` + `hederaPaymentRef` (includes `agent=` tag) **only when** `PAYMENT_AUDIT_LOG` is set. Clerk audits NL reads Studio — empty `paymentAudits` means the bridge has not fired yet, not mocked data.
+
 ## Standard lending document (fan-out)
 
 ```graphql

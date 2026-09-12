@@ -1,0 +1,1 @@
+{"query":"{ paymentAudits(first: 5, orderBy: timestamp, orderDirection: desc) { attemptId hcsRef hederaPaymentRef baseTx timestamp } }"}

@@ -1,0 +1,9 @@
+﻿parse payer unknown unknown
+tag https://hashscan.io/testnet/transaction/0.0.1|agent=payer
+tag-idempotent true
+bridge-on {"configured":true,"contract":"0x689ae72edebbf31c59e79b3cd0926a7bd638f495","note":"PaymentAudit on Base indexes hcsRef + hederaPaymentRef (incl. agent= tag)"}
+bridge-off {"configured":false,"contract":null,"note":"PAYMENT_AUDIT_LOG unset ΓÇö GraphΓåöHedera bridge inactive (HCS memos still work)"}
+[lga] agent roster pinned hcs://0.0.10423816/99
+roster-pin hcs://0.0.10423816/99
+status {"agents":true,"lastRosterRef":"hcs://0.0.10423816/99","headerTrust":"x-lga-agent honor-system from keeper consumers (not signed HCS-14)","graphBridge":true}
+PASS true

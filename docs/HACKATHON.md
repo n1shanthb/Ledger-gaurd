@@ -159,8 +159,8 @@ Consumer:   Payer agent · Autopilot pay-on-hit · CLI `npm run pay` (@x402/hede
 | Extra | LGA approach |
 |---|---|
 | Metered compute / data | Price per trigger evaluation, not flat subscription |
-| Verifiable payment audit trail | Log x402 settlement tx + link to `ExecutionReceipt` in Receipt Graph |
-| ERC-8004 / HCS-14 agent identity | Optional: register keeper agent ID (post-MVP) |
+| Verifiable payment audit trail | HCS memo + Base `PaymentAudit` → Receipt Graph (`hcsRef` / `hederaPaymentRef`) ✅ |
+| ERC-8004 / HCS-14 agent identity | Light HCS roster + `x-lga-agent` stamps (not full ERC-8004 registry) ✅ |
 | HTS token settlement | Start with HBAR; document HTS path in README |
 
 ### Reference
