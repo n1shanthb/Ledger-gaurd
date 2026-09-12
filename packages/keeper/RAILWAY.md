@@ -66,3 +66,9 @@ POLL_MS=30000
 ```
 
 Label as **dev only** — not the Hedera prize path.
+
+## Post-demo: Linux ring on Railway
+
+Optional — makes `/health` show `headless=true`. Deferred checklist: [docs/RAILWAY_KEYRING_WSL.md](../../docs/RAILWAY_KEYRING_WSL.md)
+
+Current prod uses `LGA_SECRETS_SOURCE=env` (Railway Variables) until that pass is done.
