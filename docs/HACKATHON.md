@@ -36,14 +36,14 @@ Kill switch on Ledger → all delegation revoked
 
 | Priority | Requirement | LGA deliverable | Status |
 |---|---|---|---|
-| P0 | **Key Ring CLI** — secrets broker; agent never holds raw API keys | Keeper decrypts `secrets.env.enc` via `wallet-cli ring decrypt` (not `.env`) | ✅ |
+| P0 | **Key Ring CLI** — secrets broker; agent never holds raw API keys | `capabilities.ts` mints scoped TTLs; Solver never sees session/OpenRouter keys | ✅ |
 | P0 | **Key Ring on headless host** — VPS/keeper with no USB | `ring init` once with device; runtime = `WALLET_PASS` + network only | ✅ |
 | P0 | **DMK hardware signing** — device-backed trust | `packages/hardware-test` — live Base mainnet policy tx | ✅ |
 | P0 | **HITL** — Ledger approves before irreversible delegation | Clear-sign `setGuardianPolicy` + `killSwitch` on OLED | 🟡 policy ✅ / kill ⬜ |
 | P1 | **x402 payment flows** (Ledger prize bullet) | Keeper `/trigger` gated by HBAR; `POLL_MS=0` + pay-on-hit | 🟡 |
 | P1 | **OpenRouter agent** via Key Ring | `POST /agent/chat` tools → Graph + paid trigger | 🟡 |
 | P1 | **ERC-7730 clear signing** | `clear-signing/*.erc7730.json` + registry PR | 🟡 |
-| P1 | **DX feedback document** | `docs/LEDGER_DX_FEEDBACK.md` with screenshots + gaps | ⬜ |
+| P1 | **DX feedback document** | `docs/LEDGER_DX_FEEDBACK.md` (+ C2 broker section); screenshots still thin | 🟡 |
 | P2 | Agent Stack usage (DMK + Wallet CLI / Key Ring) | DMK hardware-test + `wallet-cli ring` enroll/decrypt on keeper | ✅ |
 
 ### Demo video must show
@@ -187,7 +187,7 @@ Consumer:   Payer agent · Autopilot pay-on-hit · CLI `npm run pay` (@x402/hede
 - [x] `docs/ANCHOR.md`, `docs/ARCHITECTURE.md`, `docs/HACKATHON.md`
 - [x] `packages/keeper/README.md` — x402 payment flow diagram
 - [x] `packages/subgraph/README.md` — Studio deploy + example queries
-- [x] `docs/LEDGER_DX_FEEDBACK.md` — Ledger DX feedback
+- [x] `docs/LEDGER_DX_FEEDBACK.md` — Ledger DX feedback (screenshots still thin → table P1 🟡)
 
 ### Demo video (2–4 min Graph / ≤5 min Hedera — one edit OK)
 

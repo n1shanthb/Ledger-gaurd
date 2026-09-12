@@ -78,7 +78,48 @@
 - [x] `@ledgerhq/device-transport-kit-web-hid`
 - [x] `@ledgerhq/device-signer-kit-ethereum`
 - [x] `wallet-cli ring` (`packages/keeper/src/ring.ts`)
+- [x] Capability broker (`packages/keeper/src/capabilities.ts`) — scoped TTLs; Solver never sees raw keys
 - [x] ERC-7730 (`clear-signing/guardian_policy.erc7730.json`, `kill_switch.erc7730.json`)
+
+---
+
+## Capability broker demo (Phase C2)
+
+**Ledger one-liner:** Key Ring holds keeper secrets; the broker hands out scoped capabilities — never the API key / Base session key to Solver or Composer.
+
+### Headless host enroll (no USB at runtime)
+
+```powershell
+# Once with Ledger USB
+npm i -g @ledgerhq/wallet-cli
+WALLET_PASS=… wallet-cli ring init --name lga-keeper-host
+
+cd packages/keeper
+# fill secrets.env (KEEPER_SESSION_KEY, GRAPH_*, OPENROUTER_*, Hedera, …)
+WALLET_PASS=… npm run ring:enroll
+Remove-Item secrets.env
+
+# VPS / Railway: inject WALLET_PASS only
+$env:LGA_SECRETS_SOURCE = 'ring'
+$env:POLL_MS = '0'
+npm start
+# GET /health → keyRing.headless=true, capabilityBroker.mode=ring-broker
+```
+
+### Scopes
+
+| Scope | Consumer |
+|-------|----------|
+| `pay:trigger` | Payer (mint then require) · Autopilot / `npm run pay` (in-process **stamp**) |
+| `execute:policy:<id>` | Driver `executePolicy` — **`secrets` required** (no skip-by-omission) |
+| `read:graph` | Clerk/Solver tools: `queryReceiptGraphNl`, `listActivePolicies`, Messari decide/gate; Autopilot cycle stamp |
+| `read:pyth` | Solver `getPythSpot`; Autopilot cycle stamp |
+
+**Honest model:** hot-path caps are a **server stamp** (TTL handle in-process), not a separate agent “request capability” API. Solver/Composer still never see raw session / OpenRouter keys. Expired or missing capability when `mintInternal: false` **fails closed**.
+
+Env fallback (`capabilityBroker.mode=env-broker`) still stamps scopes; prefer `LGA_SECRETS_SOURCE=ring` so `/health.keyRing.headless=true`. Railway with env-only secrets will report `env-broker`.
+
+Proofs: [docs/proofs/phase-c2.md](./proofs/phase-c2.md)
 
 ---
 
