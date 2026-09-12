@@ -30,17 +30,30 @@ export async function openRouterRound(opts: {
     body.tool_choice = opts.toolChoice ?? "auto";
   }
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${opts.apiKey}`,
-      "content-type": "application/json",
-      "HTTP-Referer": "https://github.com/ledgergaurd",
-      "X-Title": "LGA Keeper Agent",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(90_000),
-  });
+  // Sonnet + tool_choice=required can sit >90s on OpenRouter under load
+  const timeoutMs = Number(process.env.OPENROUTER_TIMEOUT_MS || 180_000);
+  let res: Response;
+  try {
+    res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${opts.apiKey}`,
+        "content-type": "application/json",
+        "HTTP-Referer": "https://github.com/ledgergaurd",
+        "X-Title": "LGA Keeper Agent",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (e) {
+    const name = e instanceof Error ? e.name : "";
+    if (name === "TimeoutError" || name === "AbortError") {
+      throw new Error(
+        `openrouter timeout ${timeoutMs}ms (${opts.model}) — try gpt-4o-mini for solver or raise OPENROUTER_TIMEOUT_MS`,
+      );
+    }
+    throw e;
+  }
   if (!res.ok) {
     throw new Error(
       `openrouter ${res.status}: ${(await res.text()).slice(0, 300)}`,

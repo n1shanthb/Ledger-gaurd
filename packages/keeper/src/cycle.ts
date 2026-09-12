@@ -41,13 +41,13 @@ export async function runCycle(
       };
       skips.push(row);
       console.log(
-        `[lga] skip ${pol.id.slice(0, 10)}… spot=${row.spot} stop=${row.stop} take=${row.take}`,
+        `[lga] Autopilot skip ${pol.id.slice(0, 10)}… spot=${row.spot} stop=${row.stop} take=${row.take}`,
       );
       continue;
     }
 
     console.log(
-      `[lga] hit ${trigger} ${pol.id.slice(0, 10)}… ${opts.execute ? "executing" : "quote-only"}`,
+      `[lga] Autopilot hit ${trigger} ${pol.id.slice(0, 10)}… ${opts.execute ? "executing" : "quote-only"}`,
     );
     if (!opts.execute) {
       hits.push({ policyId: pol.id, trigger });
@@ -63,7 +63,7 @@ export async function runCycle(
       vaas,
     });
     hits.push({ policyId: pol.id, trigger, tx });
-    console.log(`[lga] filled ${tx}`);
+    console.log(`[lga] Driver filled ${tx}`);
   }
 
   return {

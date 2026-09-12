@@ -1,4 +1,10 @@
-export type AgentId = "coordinator" | "sentinel" | "oracle" | "broker";
+export type AgentId =
+  | "composer"
+  | "autopilot"
+  | "solver"
+  | "payer"
+  | "driver"
+  | "clerk";
 
 export type Pipeline =
   | "status"
@@ -6,6 +12,9 @@ export type Pipeline =
   | "execute"
   | "propose"
   | "full";
+
+export type { PolicyDraft, PolicyDraftItem, StrategyType } from "./policyDraft";
+import type { PolicyDraft } from "./policyDraft";
 
 export type AgentEvent =
   | { type: "run_start"; runId: string }
@@ -28,17 +37,18 @@ export type AgentEvent =
       label: string;
     }
   | { type: "gate"; runId: string; proceed: boolean; reasons: string[] }
+  | { type: "policy_draft"; runId: string; draft: PolicyDraft }
   | { type: "agent_end"; runId: string; agent: AgentId }
   | { type: "run_end"; runId: string; reply: string }
   | { type: "error"; runId: string; agent?: AgentId; message: string };
 
 export type Emit = (ev: AgentEvent) => void;
 
+/** LLM-backed roles only — autopilot / payer / driver are code paths. */
 export type OpenRouterModels = {
-  coordinator: string;
-  sentinel: string;
-  oracle: string;
-  broker: string;
+  composer: string;
+  solver: string;
+  clerk: string;
 };
 
 export type RunResult = {
@@ -48,6 +58,7 @@ export type RunResult = {
   pipeline: Pipeline;
   agents: { agent: AgentId; model: string }[];
   gateProceed: boolean | null;
+  policyDraft?: PolicyDraft | null;
 };
 
 export type ToolDef = {

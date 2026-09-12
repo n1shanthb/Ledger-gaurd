@@ -46,6 +46,7 @@ export async function executePolicy(opts: {
     to: opts.manager,
     data,
   });
+  console.log(`[lga] Driver executePolicy ${opts.policyId.slice(0, 10)}…`);
   await publicClient.waitForTransactionReceipt({ hash });
   return hash;
 }

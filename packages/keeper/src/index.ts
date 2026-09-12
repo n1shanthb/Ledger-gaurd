@@ -10,6 +10,9 @@ import { recordOnChainPaymentAudit } from "./paymentAuditTx";
 import { agentChat } from "./agent/chat";
 import type { AgentEvent } from "./agent/types";
 import { startPayOnHit } from "./payOnHit";
+import { confirmPolicyProposals } from "./agent/proposeConfirm";
+import { draftIsReady, parsePolicyDraft, type PolicyDraft } from "./agent/policyDraft";
+import { randomUUID } from "node:crypto";
 
 const secrets = loadSecrets();
 const app = express();
@@ -69,6 +72,9 @@ async function handlePaidCycle(
   const attemptId = newAttemptId();
   const execute = path === "trigger";
   try {
+    if (execute) {
+      console.log("[lga] Driver /trigger paid cycle starting");
+    }
     const r = await runCycle(secrets, { execute });
     const paymentResponse =
       (req.headers["payment-response"] as string | undefined) ??
@@ -198,6 +204,60 @@ app.post("/agent/run", async (req, res) => {
   }
 });
 
+/** Confirm edited policy draft → HITL propose (no x402). */
+app.post("/agent/propose", async (req, res) => {
+  try {
+    const body = req.body as {
+      draft?: PolicyDraft;
+      includeAddons?: boolean;
+    };
+    if (!body.draft?.primary) {
+      res.status(400).json({ error: "draft.primary required" });
+      return;
+    }
+    const draft = parsePolicyDraft(JSON.stringify(body.draft));
+    if (!draftIsReady(draft)) {
+      res.status(400).json({
+        error: "amount and trigger band (stop or take/buy USD) required before propose",
+      });
+      return;
+    }
+
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+
+    const runId = randomUUID().slice(0, 8);
+    const send = (ev: AgentEvent) => {
+      res.write(`data: ${JSON.stringify(ev)}\n\n`);
+    };
+    send({ type: "run_start", runId });
+    const { text } = await confirmPolicyProposals({
+      secrets,
+      draft,
+      includeAddons: Boolean(body.includeAddons),
+      emit: send,
+      runId,
+    });
+    send({ type: "run_end", runId, reply: text });
+    res.end();
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(500).json({ error: String(err) });
+      return;
+    }
+    res.write(
+      `data: ${JSON.stringify({
+        type: "error",
+        runId: "err",
+        message: err instanceof Error ? err.message : String(err),
+      })}\n\n`,
+    );
+    res.end();
+  }
+});
+
 if (!secrets.payTo) {
   console.warn("[lga] HEDERA_PAY_TO / HEDERA_ACCOUNT_ID missing — /trigger will 500 on 402 setup");
 }
@@ -237,6 +297,7 @@ app.listen(port, () => {
   }
   // Same process watcher — one Railway service, stretches free credit
   if (process.env.PAY_ON_HIT === "1" || process.env.PAY_ON_HIT === "true") {
+    console.log("[lga] Autopilot pay-on-hit enabled (PAY_ON_HIT=1)");
     startPayOnHit(secrets);
   }
 });
