@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatUnits } from "viem";
 import { PolicyPriceChart } from "@/components/PolicyPriceChart";
+import { useProtectionOptional } from "@/components/ProtectionProvider";
+import { EmptyState } from "@/components/ui/Panel";
 import { BASE_TOKENS, tokenDecimals } from "@/lib/abi";
 import {
   BASESCAN_GPM,
@@ -13,6 +16,7 @@ import {
 import { fetchPolicies, type PolicyRow } from "@/lib/subgraph";
 
 type Filter = "all" | "active" | "inactive";
+type Scope = "mine" | "global";
 
 function policyTypeNum(t: string | number): 0 | 1 | 2 | 3 {
   const s = String(t);
@@ -52,11 +56,19 @@ function formatMax(token: string, raw: string, type: 0 | 1 | 2 | 3): string {
 }
 
 export function PoliciesExplorer() {
+  const protection = useProtectionOptional();
+  const owner = protection?.ownerFilter ?? null;
+  const [scope, setScope] = useState<Scope>("mine");
   const [rows, setRows] = useState<PolicyRow[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!owner) setScope("global");
+    else setScope("mine");
+  }, [owner]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,35 +93,62 @@ export function PoliciesExplorer() {
     return () => clearInterval(id);
   }, [load]);
 
-  const filtered = useMemo(() => {
-    if (filter === "active") return rows.filter((p) => p.active);
-    if (filter === "inactive") return rows.filter((p) => !p.active);
+  const scoped = useMemo(() => {
+    if (scope === "mine" && owner) {
+      return rows.filter((p) => p.owner.toLowerCase() === owner.toLowerCase());
+    }
     return rows;
-  }, [rows, filter]);
+  }, [rows, scope, owner]);
+
+  const filtered = useMemo(() => {
+    if (filter === "active") return scoped.filter((p) => p.active);
+    if (filter === "inactive") return scoped.filter((p) => !p.active);
+    return scoped;
+  }, [scoped, filter]);
 
   const selected = useMemo(
-    () => rows.find((p) => p.id === selectedId) ?? filtered[0] ?? null,
-    [rows, selectedId, filtered],
+    () => scoped.find((p) => p.id === selectedId) ?? filtered[0] ?? null,
+    [scoped, selectedId, filtered],
   );
 
   const typeN = selected ? policyTypeNum(selected.policyType) : 0;
   const stopN = selected ? usdNumberFrom1e8(selected.stopLossPrice) : null;
   const takeN = selected ? usdNumberFrom1e8(selected.takeProfitPrice) : null;
-
-  // TP-only: take + spot. SL: stop (+ take if set). LP / buy-dip: band lines.
-  const chartStop =
-    typeN === 1 ? "" : stopN != null ? stopN.toFixed(2) : "";
+  const chartStop = typeN === 1 ? "" : stopN != null ? stopN.toFixed(2) : "";
   const chartTake = takeN != null ? takeN.toFixed(2) : "";
 
   return (
-    <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
       <div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={!owner}
+            onClick={() => setScope("mine")}
+            className={`rounded-full border px-3 py-1.5 font-mono text-xs disabled:opacity-40 ${
+              scope === "mine"
+                ? "border-accent text-accent"
+                : "border-mist text-mute"
+            }`}
+          >
+            My wallet
+          </button>
+          <button
+            type="button"
+            onClick={() => setScope("global")}
+            className={`rounded-full border px-3 py-1.5 font-mono text-xs ${
+              scope === "global"
+                ? "border-warn text-warn"
+                : "border-mist text-mute"
+            }`}
+          >
+            Judge / global index
+          </button>
           {(
             [
-              ["all", "All"],
               ["active", "Active"],
-              ["inactive", "Inactive"],
+              ["inactive", "Off"],
+              ["all", "All"],
             ] as const
           ).map(([k, label]) => (
             <button
@@ -134,12 +173,39 @@ export function PoliciesExplorer() {
           </button>
         </div>
 
+        {scope === "global" && (
+          <p className="mt-3 text-xs text-warn">
+            Global index shows all indexed owners — for judges/explorers, not your default.
+          </p>
+        )}
+
         {loading && rows.length === 0 && (
-          <p className="mt-6 font-mono text-xs text-mute">Loading policies…</p>
+          <p className="mt-6 font-mono text-xs text-mute">Loading protections…</p>
         )}
         {err && <p className="mt-6 text-sm text-kill">{err}</p>}
         {!loading && !err && filtered.length === 0 && (
-          <p className="mt-6 text-sm text-mute">No policies in this filter.</p>
+          <div className="mt-6">
+            <EmptyState
+              title={
+                scope === "mine"
+                  ? "No protections for this wallet"
+                  : "No policies in this filter"
+              }
+              body={
+                scope === "mine"
+                  ? "Connect on Protect and clear-sign a policy. Indexing may lag a minute after Base confirms."
+                  : "Try Active or All, or refresh Studio."
+              }
+              action={
+                <Link
+                  href="/protect/journey"
+                  className="inline-flex min-h-11 items-center rounded-full bg-paper px-4 py-2 text-sm font-semibold text-ink transition hover:bg-signal"
+                >
+                  Create protection
+                </Link>
+              }
+            />
+          </div>
         )}
 
         <ul className="mt-4 divide-y divide-line border-t border-line">
@@ -151,7 +217,7 @@ export function PoliciesExplorer() {
                   type="button"
                   onClick={() => setSelectedId(p.id)}
                   className={`flex w-full flex-col gap-1 px-1 py-4 text-left transition ${
-                    on ? "bg-signal/5" : "hover:bg-panel"
+                    on ? "bg-accent/5" : "hover:bg-panel"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -162,7 +228,7 @@ export function PoliciesExplorer() {
                           : "bg-mist text-mute"
                       }`}
                     >
-                      {p.active ? "active" : "inactive"}
+                      {p.active ? "active" : "filled / off"}
                     </span>
                     <span className="text-sm text-paper">
                       {policyTypeLabel(p.policyType)}
@@ -173,12 +239,15 @@ export function PoliciesExplorer() {
                   </div>
                   <div className="flex flex-wrap gap-3 font-mono text-xs text-mute">
                     {Number(p.stopLossPrice) > 0 && (
-                      <span>stop {usdFrom1e8(p.stopLossPrice)}</span>
+                      <span>trigger {usdFrom1e8(p.stopLossPrice)}</span>
                     )}
                     {Number(p.takeProfitPrice) > 0 && (
-                      <span>take {usdFrom1e8(p.takeProfitPrice)}</span>
+                      <span>target {usdFrom1e8(p.takeProfitPrice)}</span>
                     )}
-                    <span className="text-mute/80">{short(p.owner)}</span>
+                    <span>
+                      cover{" "}
+                      {formatMax(p.token, p.maxAmount, policyTypeNum(p.policyType))}
+                    </span>
                   </div>
                 </button>
               </li>
@@ -189,43 +258,53 @@ export function PoliciesExplorer() {
 
       <aside className="lg:sticky lg:top-24 lg:self-start">
         {!selected ? (
-          <p className="text-sm text-mute">Select a policy to inspect levels.</p>
+          <p className="text-sm text-mute">Select a protection.</p>
         ) : (
-          <div className="border border-line bg-panel p-5">
+          <div className="border-t border-line pt-6 lg:sticky lg:top-28 lg:self-start">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-signal">
-              Policy detail
+              Protection detail
             </p>
             <h2 className="mt-2 font-display text-2xl text-paper">
               {policyTypeLabel(selected.policyType)}
             </h2>
             <p className="mt-1 text-sm text-mute">{tokenLabel(selected.token)}</p>
 
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href="/protect/journey"
+                className="rounded-full bg-paper px-3 py-2 text-xs font-semibold text-ink transition hover:bg-signal"
+              >
+                Adjust on Protect
+              </Link>
+              <Link
+                href="/protect/activity"
+                className="rounded-full border border-mist px-3 py-2 text-xs text-mute hover:text-paper"
+              >
+                View activity
+              </Link>
+            </div>
+
             <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-mute">Status</dt>
                 <dd className={selected.active ? "text-signal" : "text-mute"}>
-                  {selected.active ? "Active" : "Inactive"}
+                  {selected.active
+                    ? "Active"
+                    : "Inactive (filled or revoked)"}
                 </dd>
               </div>
               <div>
-                <dt className="text-mute">Owner</dt>
-                <dd className="font-mono text-xs text-paper">
-                  <a
-                    href={`https://basescan.org/address/${selected.owner}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-signal"
-                  >
-                    {short(selected.owner)}
-                  </a>
+                <dt className="text-mute">Covered amount</dt>
+                <dd className="font-mono text-paper">
+                  {formatMax(selected.token, selected.maxAmount, typeN)}
                 </dd>
               </div>
               {Number(selected.stopLossPrice) > 0 && (
                 <div>
                   <dt className="text-mute">
-                    {typeN === 3 ? "Buy ≤ (dip)" : "Stop-loss floor"}
+                    {typeN === 3 ? "Buy ≤" : "Stop floor"}
                   </dt>
-                  <dd className="font-mono text-kill">
+                  <dd className="font-mono text-warn">
                     {usdFrom1e8(selected.stopLossPrice)}
                   </dd>
                 </div>
@@ -233,45 +312,31 @@ export function PoliciesExplorer() {
               {Number(selected.takeProfitPrice) > 0 && (
                 <div>
                   <dt className="text-mute">
-                    {typeN === 3 ? "Buy ≥ (breakout)" : "Take-profit target"}
+                    {typeN === 3 ? "Buy ≥" : "Take target"}
                   </dt>
                   <dd className="font-mono text-paper">
                     {usdFrom1e8(selected.takeProfitPrice)}
                   </dd>
                 </div>
               )}
-              <div>
-                <dt className="text-mute">
-                  {typeN === 3 ? "USDC spend" : "Max amount"}
-                </dt>
-                <dd className="font-mono text-paper">
-                  {formatMax(selected.token, selected.maxAmount, typeN)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-mute">Created</dt>
-                <dd className="font-mono text-xs text-mute">
-                  {new Date(Number(selected.createdAt) * 1000).toLocaleString()}
-                </dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className="text-mute">Policy id</dt>
-                <dd className="break-all font-mono text-[10px] text-mute">
-                  {selected.id}
-                </dd>
-              </div>
             </dl>
 
-            <a
-              href={BASESCAN_GPM}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-block font-mono text-xs text-signal hover:underline"
-            >
-              GPM on Basescan →
-            </a>
+            <details className="mt-4 text-xs text-mute">
+              <summary className="cursor-pointer">Technical details</summary>
+              <p className="mt-2 break-all font-mono">
+                Owner {short(selected.owner)} · id {selected.id}
+              </p>
+              <a
+                href={BASESCAN_GPM}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-signal hover:underline"
+              >
+                GPM on Basescan →
+              </a>
+            </details>
 
-            <div className="mt-2 border-t border-line pt-2">
+            <div className="mt-4 border-t border-line pt-2">
               <PolicyPriceChart
                 asset={chartAsset(selected.token)}
                 stopLossUsd={chartStop}
@@ -279,17 +344,6 @@ export function PoliciesExplorer() {
                 policyType={typeN}
               />
             </div>
-
-            <p className="mt-3 font-mono text-[10px] text-mute">
-              {typeN === 1 && "Chart: Pyth spot vs take-profit target."}
-              {typeN === 0 &&
-                "Chart: Pyth spot vs stop-loss floor" +
-                  (takeN != null ? " (+ take if set)." : ".")}
-              {typeN === 2 &&
-                "Chart: LP band — bottom sell (stop) + top take + live Pyth."}
-              {typeN === 3 &&
-                "Chart: buy-dip — Buy ≤ / Buy ≥ vs live Pyth."}
-            </p>
           </div>
         )}
       </aside>

@@ -18,19 +18,17 @@ export function Hero() {
         </p>
         <div className="animate-rise-late mt-10 flex flex-wrap items-center gap-4">
           <Link
-            href="/console"
+            href="/protect/journey"
             className="rounded-full bg-paper px-6 py-3 text-sm font-semibold text-ink transition hover:bg-signal"
           >
-            View live Receipt Graph
+            Protect an asset
           </Link>
-          <a
-            href="https://github.com/n1shanthb/CircuitVault-"
+          <Link
+            href="/#proof"
             className="rounded-full border border-mist px-6 py-3 text-sm text-paper transition hover:border-paper"
-            target="_blank"
-            rel="noreferrer"
           >
-            Protocol repo
-          </a>
+            See a verified fill
+          </Link>
         </div>
       </div>
     </section>

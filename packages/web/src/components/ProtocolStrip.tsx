@@ -1,40 +1,57 @@
 const steps = [
   {
     k: "01",
-    t: "Clear-sign on Ledger",
-    d: "Stop-loss or take-profit bounds render on OLED. Master key never leaves the device.",
+    t: "Connect Ledger",
+    d: "Unlock, open Ethereum app, pick the account you want to protect.",
   },
   {
     k: "02",
-    t: "Receipt Graph indexes",
-    d: "Policies and kills sync to Subgraph Studio on Base — live, not mocked.",
+    t: "Choose asset",
+    d: "See balances and live Pyth spots for what you can cover.",
   },
   {
     k: "03",
-    t: "Keeper pays x402",
-    d: "Agent settles HBAR via Blocky402, then evaluates Pyth and may execute.",
+    t: "Pick protection",
+    d: "Stop-loss, take-profit, or buy-dip — limits you clear-sign.",
   },
   {
     k: "04",
-    t: "Kill switch",
-    d: "One Ledger tap revokes every policy and session key for that owner.",
+    t: "Review & sign",
+    d: "OLED shows what can move. Master key never leaves Ledger.",
+  },
+  {
+    k: "05",
+    t: "Keeper watches",
+    d: "Safe to unplug. Autopilot monitors bands without your USB.",
+  },
+  {
+    k: "06",
+    t: "Paid attempt",
+    d: "Hedera x402 pays for evaluation — not the same as a fill.",
+  },
+  {
+    k: "07",
+    t: "Receipt Graph",
+    d: "Verified fills and kills index on Base for anyone to audit.",
   },
 ];
 
 export function ProtocolStrip() {
   return (
-    <section id="protocol" className="border-t border-line bg-ink px-5 py-24 md:px-8">
+    <section id="how" className="border-t border-line bg-ink px-5 py-24 md:px-8">
       <div className="mx-auto max-w-6xl">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-mute">Protocol</p>
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-mute">
+          How it works
+        </p>
         <h2 className="mt-4 max-w-2xl font-display text-3xl font-semibold tracking-tight text-paper md:text-5xl">
-          One path from OLED approval to indexed compliance.
+          Seven steps from device to verified fill.
         </h2>
-        <ol className="mt-16 grid gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+        <ol className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {steps.map((s) => (
-            <li key={s.k} className="border-t border-mist pt-6">
-              <span className="font-mono text-sm text-signal">{s.k}</span>
-              <h3 className="mt-3 font-display text-xl text-paper">{s.t}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-mute">{s.d}</p>
+            <li key={s.k} className="border-t border-mist pt-5">
+              <span className="font-mono text-sm text-accent">{s.k}</span>
+              <h3 className="mt-2 font-display text-xl text-paper">{s.t}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-mute">{s.d}</p>
             </li>
           ))}
         </ol>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BASESCAN_GPM, KILL_TX, POLICY_TX, STUDIO_URL } from "@/lib/constants";
 
 const proofs = [
@@ -9,12 +10,18 @@ const proofs = [
 
 export function LiveProof() {
   return (
-    <section className="border-t border-line bg-panel px-5 py-24 md:px-8">
+    <section id="proof" className="border-t border-line bg-panel px-5 py-24 md:px-8">
       <div className="mx-auto max-w-6xl">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-mute">Live on Base</p>
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-mute">
+          Verified on Base
+        </p>
         <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-paper md:text-4xl">
-          Mainnet proof, not a mock.
+          See a verified fill path — not a mock.
         </h2>
+        <p className="mt-3 max-w-xl text-sm text-mute">
+          These links are on-chain and Studio proof. Open Activity after you protect an
+          asset to follow your own timeline.
+        </p>
         <ul className="mt-12 divide-y divide-line border-y border-line">
           {proofs.map((p) => (
             <li key={p.label}>
@@ -32,6 +39,12 @@ export function LiveProof() {
             </li>
           ))}
         </ul>
+        <Link
+          href="/protect/activity"
+          className="mt-8 inline-flex min-h-11 items-center rounded-full border border-mist px-5 py-2 text-sm text-paper hover:border-paper"
+        >
+          Open Activity
+        </Link>
       </div>
     </section>
   );

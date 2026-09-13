@@ -255,7 +255,7 @@ function SentinelMesh({ hot, tool }: { hot: boolean; tool: boolean }) {
   const beamDir = useMemo(() => {
     const d = new THREE.Vector3(graph[0] - self[0], 0, graph[2] - self[2]).normalize();
     return Math.atan2(d.x, d.z);
-  }, []);
+  }, [graph, self]);
 
   return (
     <group>
