@@ -4,6 +4,7 @@ Drop replacement files named exactly as referenced from the root README and `doc
 
 | File | Capture |
 |---|---|
+| `lga-six-role-architecture.svg` | Six-role taxonomy + crypto boundary (README top) |
 | `landing-hero.png` | `/` or `/protect` full page, light mode |
 | `policy-draft.png` | `/protect/agent` draft card |
 | `agent-ops-mid-run.png` | AgentOpsGraph mid SSE run |

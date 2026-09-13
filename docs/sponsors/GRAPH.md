@@ -1,12 +1,19 @@
 # Sponsor brief — The Graph
 
-**Track pitch:** Best AI **Use Case** (From Scratch) — Receipt Graph is load-bearing for keeper automation. Optional second surface: Composable / Messari fan-out via `@lga/graph-data`.
+**Track pitch:** Best AI **Use Case** (From Scratch) — Receipt Graph is load-bearing for keeper automation. Optional second surface: Composable / Messari fan-out via `@lga/graph-data`.  
+**Network:** Indexes **Base mainnet** Guardian events. Studio + Gateway are live production query surfaces (no mocked subgraph data).
+
+![LGA six-role architecture](../assets/lga-six-role-architecture.svg)
+
+**Receipt Clerk** is the only LLM role allowed to query Receipt Graph. **Band Autopilot** loads policies from the same index before Pyth / fill.
 
 ---
 
 ## Claim
 
-The Graph is not a dashboard decoration. The keeper’s Autopilot / paid `/trigger` cycle **loads active policies from the Receipt Graph** before any Pyth comparison or Base `executePolicy`. Clerk answers status questions by forcing a live Studio (or configured) GraphQL path — the same indexed entities the automation uses. Without Graph, LGA has no authoritative list of policies to evaluate and no indexed compliance trail for fills.
+The Graph is not a dashboard decoration. The keeper’s Autopilot / paid `/trigger` cycle **loads active policies from the Receipt Graph** before any Pyth comparison or Base mainnet `executePolicy`. Clerk answers status by forcing a live Studio/Gateway GraphQL path — the same indexed entities automation uses. Without Graph, LGA has no authoritative list of policies to evaluate and no indexed compliance trail for fills.
+
+**Production shape:** subgraph deployed and queryable; web Activity + congrats replay real `ExecutionReceipt` rows; keeper caches + cooldown so Autopilot survives Studio rate limits without fake data.
 
 ---
 
@@ -19,6 +26,25 @@ If Receipt Graph were removed:
 - Post-fill `ExecutionReceipt` / `PaymentAudit` entities disappear from the audit story judges query in Studio.
 
 Payment alone never substitutes for Graph: paid settle proofs intentionally show `evaluated:0` when no in-band policy exists ([`docs/proofs/x402-settle.md`](../proofs/x402-settle.md)).
+
+---
+
+## Live proofs (open these)
+
+| Artifact | Link |
+|---|---|
+| Studio project | https://thegraph.com/studio/subgraph/ledger-guardian-agent |
+| Studio query `v0.0.4` | https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.4 |
+| Explorer / Gateway subgraph | https://thegraph.com/explorer/subgraphs/GfvNLa3ym7X6bNDNm6oyqvHGgW2anbzTKhEo7cFPjhvz |
+| Mainnet fill (indexed path) | https://basescan.org/tx/0xb6f315a435e6dfd19607d9b662fdb0415fd476a21937f0a2c7b8d78d882371d3 |
+| Earlier Clerk-indexed fills | https://basescan.org/tx/0x41a4e8ced5804985faaac056f03567460e15f66dbec2f8062065744448f1ac51 |
+| Live Activity UI | https://ledger-gaurd.vercel.app/protect/activity |
+| MCP / Use Case pitch | [`docs/SUBGRAPH_MCP.md`](../SUBGRAPH_MCP.md) |
+| Band Autopilot (Graph → pay) | [`packages/keeper/src/payOnHit.ts`](../../packages/keeper/src/payOnHit.ts) |
+| Cycle (Graph → Pyth → Driver) | [`packages/keeper/src/cycle.ts`](../../packages/keeper/src/cycle.ts) |
+| Receipt Clerk | [`packages/keeper/src/agent/clerk.ts`](../../packages/keeper/src/agent/clerk.ts) |
+| Subgraph MCP consumer | [`packages/keeper/src/agent/subgraphMcp.ts`](../../packages/keeper/src/agent/subgraphMcp.ts) |
+| Schema | [`packages/subgraph/schema.graphql`](../../packages/subgraph/schema.graphql) |
 
 ---
 

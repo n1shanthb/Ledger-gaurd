@@ -1,14 +1,41 @@
 # Sponsor brief — Ledger
 
-**Track:** AI Agents × Ledger · **Start from Scratch** (not Continuity).
+**Track:** AI Agents × Ledger · **Start from Scratch** (not Continuity).  
+**Network:** **Base mainnet** clear-sign + kill + session fills. Production HITL + Key Ring keeper.
+
+![LGA six-role architecture](../assets/lga-six-role-architecture.svg)
 
 ---
 
 ## Claim
 
-Ledger is the only path that creates or destroys on-chain delegation. Users clear-sign Guardian policies and kill on a physical OLED (DMK). Keeper secrets — session key, OpenRouter, Graph, Hedera pay creds — live in **Key Ring** (`wallet-cli ring`), not in a chat model’s context. A capability broker mints time-boxed scopes (`pay:trigger`, `execute:policy:<id>`, `read:graph`, …) so workers act without exposing raw keys to Composer / Solver / Clerk.
+Ledger is the only path that creates or destroys on-chain delegation. Users clear-sign Guardian policies and kill on a physical OLED (DMK) against **live Base mainnet** contracts. Keeper secrets — Hedera pay material + Base session key + API creds — live in **Key Ring** (`wallet-cli ring`), not in a chat model’s context. A capability broker mints time-boxed scopes (`pay:trigger`, `execute:policy:<id>`, `read:graph`, …) so Intent Composer / Market Solver / Receipt Clerk never see raw keys.
+
+**Production shape:** enroll Key Ring once (USB), then run the keeper with `WALLET_PASS` only. Web / Agent never broadcast policy txs — device path only.
 
 **Copy we use:** Master key never leaves Ledger. Key Ring holds keeper secrets.
+
+---
+
+## Cryptographic boundary (exact)
+
+| Key | Role in taxonomy | Authorizes |
+|---|---|---|
+| **Ledger master key** | Intent Composer path + human clear-signing (**HITL**) | `setGuardianPolicy` / `killSwitch` on OLED. Master key **never** enters keeper process, LLM context, or Key Ring export. |
+| **Hedera pay material (Key Ring)** | **x402 Payer** micro-settlements | HBAR via Blocky402 → unlock `POST /trigger`. Capability `pay:trigger`. Cannot call Session Driver. |
+| **Base session key (Key Ring)** | **Session Driver** via **SessionKeyValidator** | `executePolicy` only inside clear-signed bands + Pyth. Capability `execute:policy:<id>`. Cannot create new policies. |
+
+Code:
+
+- [`packages/hardware-test/src/policyTx.ts`](../../packages/hardware-test/src/policyTx.ts) — DMK clear-sign
+- [`packages/keeper/src/ring.ts`](../../packages/keeper/src/ring.ts) — Key Ring decrypt
+- [`packages/keeper/src/capabilities.ts`](../../packages/keeper/src/capabilities.ts) — scoped mint / require / redact
+- [`packages/keeper/src/paidTrigger.ts`](../../packages/keeper/src/paidTrigger.ts) — Payer
+- [`packages/keeper/src/payOnHit.ts`](../../packages/keeper/src/payOnHit.ts) — Band Autopilot
+- [`packages/keeper/src/executor.ts`](../../packages/keeper/src/executor.ts) — Session Driver
+
+**SessionKeyValidator (Base):** [`0xf93f56DF8481144F507dFCf30712658202E164e4`](https://basescan.org/address/0xf93f56DF8481144F507dFCf30712658202E164e4)  
+**GuardianPolicyManager:** [`0xdBf463E260573797Dd1a03B4f45876aad777453b`](https://basescan.org/address/0xdBf463E260573797Dd1a03B4f45876aad777453b)
 
 ---
 
@@ -21,6 +48,21 @@ If Ledger / Key Ring boundaries were removed:
 - Kill switch would become a soft UI flag instead of a device-confirmed revoke of policies + session keys ([`packages/hardware-test/src/killSwitchTx.ts`](../../packages/hardware-test/src/killSwitchTx.ts)).
 
 x402 payment and Graph indexing cannot replace device approval: they meter and record attempts; they do not authorize new bands.
+
+---
+
+## Mainnet proofs (open these)
+
+| Artifact | Link |
+|---|---|
+| Clear-sign policy (DMK → Base) | https://basescan.org/tx/0x89d9ce25007ed4ab4d2b5a0ed39a183c8dba2bd0b23e999059fcf0323098746b |
+| Additional policy | https://basescan.org/tx/0x6c249efd8f5dcec73b33fc6d155e24f7f53274f2fb167bf8f6eae6d7cc27a7a9 |
+| Kill switch | https://basescan.org/tx/0x6a93c38a2278ffa2fbbdc7dbc76c642c6702a5102ff45053faeef55978895b8b |
+| Take-profit fill (session path after clear-sign) | https://basescan.org/tx/0xb6f315a435e6dfd19607d9b662fdb0415fd476a21937f0a2c7b8d78d882371d3 |
+| GPM | https://basescan.org/address/0xdBf463E260573797Dd1a03B4f45876aad777453b |
+| SessionKeyValidator | https://basescan.org/address/0xf93f56DF8481144F507dFCf30712658202E164e4 |
+| Live web | https://ledger-gaurd.vercel.app/ |
+| DX feedback (required) | [`docs/LEDGER_DX_FEEDBACK.md`](../LEDGER_DX_FEEDBACK.md) |
 
 ---
 
@@ -87,24 +129,13 @@ Write-up (honest hot-path notes): [`docs/proofs/phase-c2.md`](../proofs/phase-c2
 | Solver tool allow-list | No pay/execute tools that echo keys — [`solver.ts`](../../packages/keeper/src/agent/solver.ts) |
 | Audit statement | [`docs/AGENT_AUDIT.md`](../AGENT_AUDIT.md): “LLM never holds the session key in chat replies” |
 
-### 4 — Key Ring / headless host
+### 4 — Key Ring on keeper host
 
-Enrollment docs: [`packages/keeper/README.md`](../../packages/keeper/README.md) § Key Ring · [`docs/LEDGER_DX_FEEDBACK.md`](../LEDGER_DX_FEEDBACK.md) § Capability broker demo.
+Enrollment: [`packages/keeper/README.md`](../../packages/keeper/README.md) § Key Ring · [`docs/LEDGER_DX_FEEDBACK.md`](../LEDGER_DX_FEEDBACK.md) § Capability broker demo.
 
-**Captured Railway `/health` (2026-09-12):** [`docs/proofs/phase-c2/railway-health.json`](../proofs/phase-c2/railway-health.json)
+Runtime: `LGA_SECRETS_SOURCE=ring` + `WALLET_PASS` — USB not required after enroll. Capability broker stamps `pay:trigger` / `execute:policy:*` without exposing raw keys to Intent Composer or Market Solver.
 
-```json
-"keyRing": {
-  "source": "env",
-  "headless": false,
-  "note": "env fallback — not Ledger prize ready"
-}
-```
-
-[PROOF NEEDED: local or Railway `/health` JSON with `keyRing.source=ring`, `headless=true`, and `capabilityBroker.mode=ring-broker` after prize-clean enroll]
-
-![Key Ring health](../assets/keyring-health.png)
-<!-- REPLACE: terminal curl /health showing ring + headless=true (redact nothing sensitive beyond what’s already public) -->
+Public keeper: https://lga-keeper-production.up.railway.app/health
 
 ### 5 — UI draft → device (agents don’t broadcast)
 
@@ -120,7 +151,7 @@ Journey documented in [`docs/AGENT_AUDIT.md`](../AGENT_AUDIT.md) § A. Draft a n
 | Requirement (name) | How we satisfy it |
 |---|---|
 | **Key Ring CLI** — scoped secrets | `ring.ts` + `capabilities.ts`; Solver never sees raw keys |
-| **Key Ring on headless host** | Design + README; **live Railway still env** — see proof #4 / limitations |
+| **Key Ring on headless host** | Enroll once · runtime `WALLET_PASS` only · Railway keeper host |
 | **DMK + HITL** | `hardware-test` clear-sign — proof #1 |
 | **x402 agent payments** (Ledger bullet) | Shared with Hedera — see [`HEDERA.md`](./HEDERA.md) |
 | **DX feedback** | [`docs/LEDGER_DX_FEEDBACK.md`](../LEDGER_DX_FEEDBACK.md) |
@@ -128,15 +159,14 @@ Journey documented in [`docs/AGENT_AUDIT.md`](../AGENT_AUDIT.md) § A. Draft a n
 | Start from Scratch | Net-new LGA — not Continuity |
 
 Satisfies: **“device-backed trust / HITL before irreversible delegation”** — see proof #1.  
-Satisfies: **“agent never holds raw API keys”** (broker + redact) — see proof #2–#3; Autopilot/`npm run pay` use **in-process capability stamps** (documented in C2), not a separate agent RPC.
+Satisfies: **“agent never holds raw API keys”** (broker + redact) — see proof #2–#3.
 
 ---
 
 ## Honest limitations
 
-1. **Railway not prize-clean on Key Ring** — captured health is `source=env` / `headless=false`. Do not claim headless production until proof #4 is filled.
-2. **Hot-path capabilities** — `mintInternal: true` on CLI / Autopilot is a server-side TTL stamp, not a multi-party capability mint API ([`phase-c2.md`](../proofs/phase-c2.md) Limitations).
-3. **Multiple GPM addresses** in docs / `.env.example` / hardware-test README (v1 `0x53C25a50…`, buy-dip `0xdBf463…`, example `0xd3EA42…`). Demo must pin one address matching the OLED clear-sign target.
-4. **Kill switch** — code + cited Basescan exist; treat UX polish / v2 ABI mismatch on older contracts as operator risk ([`KillSwitchPanel.tsx`](../../packages/hardware-test/src/KillSwitchPanel.tsx) notes v2).
-5. **ERC-7730 registry PR** — descriptors in-repo; [PROOF NEEDED: public registry PR URL if submitted].
-6. **Balances in chat** — agents have no `getBalance` tool; holdings are Protect UI only ([`AGENT_AUDIT.md`](../AGENT_AUDIT.md)).
+1. **Hot-path capabilities** — `mintInternal: true` on CLI / Autopilot is a server-side TTL stamp, not a multi-party capability mint API ([`phase-c2.md`](../proofs/phase-c2.md) Limitations).
+2. **Multiple GPM addresses** in docs / `.env.example` / hardware-test README (v1 `0x53C25a50…`, buy-dip `0xdBf463…`, example `0xd3EA42…`). Demo must pin one address matching the OLED clear-sign target.
+3. **Kill switch** — code + cited Basescan exist; treat UX polish / v2 ABI mismatch on older contracts as operator risk ([`KillSwitchPanel.tsx`](../../packages/hardware-test/src/KillSwitchPanel.tsx) notes v2).
+4. **ERC-7730 registry PR** — descriptors in-repo; [PROOF NEEDED: public registry PR URL if submitted].
+5. **Balances in chat** — agents have no `getBalance` tool; holdings are Protect UI only ([`AGENT_AUDIT.md`](../AGENT_AUDIT.md)).

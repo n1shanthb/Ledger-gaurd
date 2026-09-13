@@ -1,14 +1,19 @@
 # Sponsor brief — Hedera
 
-**Track:** AI & Agentic Payments on Hedera (x402 + Blocky402).
+**Track:** AI & Agentic Payments on Hedera (x402 + Blocky402).  
+**Production shape:** Public keeper host on Railway; unpaid `/trigger` returns live **402**; **x402 Payer** / **Band Autopilot** settle HBAR then evaluate **Base mainnet** policies. Payment meters attempts — fills stay on Base (Session Driver).
+
+![LGA six-role architecture](../assets/lga-six-role-architecture.svg)
 
 ---
 
 ## Claim
 
-Hedera meters every keeper **execution attempt**. The same process **hosts** an x402-gated `POST /trigger` (and cheaper `POST /quote`) and **consumes** it as Payer / Autopilot / `npm run pay` — paying HBAR via Blocky402 on `hedera:testnet`. Settle is independent of Base fills: payment unlocks evaluation; Graph + Pyth + on-chain bands decide whether Driver broadcasts. Optional **HCS** memos attach a HashScan-auditable ref (`hcsRef`) to paid attempts.
+Hedera meters every keeper **execution attempt**. The same process **hosts** an x402-gated `POST /trigger` (and cheaper `POST /quote`) and **consumes** it as Payer / Autopilot / `npm run pay` — paying HBAR via Blocky402 on `hedera:testnet` (demo network; same host+consumer architecture for mainnet facilitator config). Settle is independent of Base fills: payment unlocks evaluation; Graph + Pyth + on-chain bands decide whether Driver broadcasts on **Base mainnet**. Optional **HCS** memos attach a HashScan-auditable ref (`hcsRef`) to paid attempts.
 
 Without Hedera/x402, prize-mode keeper (`POLL_MS=0`) has no paid gate — free autopoll would violate the “pay to attempt” product.
+
+**Public production host:** `https://lga-keeper-production.up.railway.app`
 
 ---
 
@@ -21,6 +26,29 @@ If x402 / Blocky402 were removed:
 - HCS payment audit refs (`hcs://…`) and HashScan settle links disappear from compliance narratives that Graph `PaymentAudit` is meant to join.
 
 Base policy signatures and Graph indexing still matter, but the **agentic payment** track requirement fails: there is no live 402 → settle → attempt loop.
+
+---
+
+## Live proofs (open these)
+
+| Artifact | Link |
+|---|---|
+| Unpaid `/trigger` → 402 + paid settle writeup | [`docs/proofs/x402-settle.md`](../proofs/x402-settle.md) |
+| HashScan settle (example) | https://hashscan.io/testnet/transaction/0.0.7162784%401789203702.106539865 |
+| HCS topic | https://hashscan.io/testnet/topic/0.0.10423816 |
+| Keeper health (prize mode) | https://lga-keeper-production.up.railway.app/health |
+| Architecture README | [`packages/keeper/README.md`](../../packages/keeper/README.md) |
+| Base mainnet fill after paid Autopilot path | https://basescan.org/tx/0xb6f315a435e6dfd19607d9b662fdb0415fd476a21937f0a2c7b8d78d882371d3 |
+| x402 Payer | [`packages/keeper/src/paidTrigger.ts`](../../packages/keeper/src/paidTrigger.ts) |
+| Band Autopilot | [`packages/keeper/src/payOnHit.ts`](../../packages/keeper/src/payOnHit.ts) |
+| x402 middleware | [`packages/keeper/src/x402.ts`](../../packages/keeper/src/x402.ts) |
+| HCS audit | [`packages/keeper/src/hcsAudit.ts`](../../packages/keeper/src/hcsAudit.ts) |
+
+```bash
+curl -i -X POST https://lga-keeper-production.up.railway.app/trigger \
+  -H "content-type: application/json" -d "{}"
+# HTTP 402 Payment Required
+```
 
 ---
 

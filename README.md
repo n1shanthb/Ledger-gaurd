@@ -1,15 +1,125 @@
 # Ledger Guardian Agent (LGA)
 
-[![Stack](https://img.shields.io/badge/stack-Base%20%7C%20Graph%20%7C%20Hedera%20%7C%20Ledger-111?style=flat-square)](./docs/ANCHOR.md)
+[![Stack](https://img.shields.io/badge/stack-Base%20mainnet%20%7C%20Graph%20%7C%20Hedera%20%7C%20Ledger-111?style=flat-square)](./docs/ANCHOR.md)
 [![Pool](https://img.shields.io/badge/ETHOnline-Start%20Fresh-0a7?style=flat-square)](./docs/HACKATHON.md)
+[![Mainnet](https://img.shields.io/badge/Base-mainnet%20tested-0052ff?style=flat-square)](https://basescan.org/address/0xdBf463E260573797Dd1a03B4f45876aad777453b)
 [![x402](https://img.shields.io/badge/x402-Blocky402%20live-f5a?style=flat-square)](./docs/proofs/x402-settle.md)
-[![Receipt Graph](https://img.shields.io/badge/Receipt%20Graph-Studio%20v0.0.4-6f2?style=flat-square)](https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.4)
-[![License](https://img.shields.io/badge/license-TBD-lightgrey?style=flat-square)](#license)
+[![Receipt Graph](https://img.shields.io/badge/Receipt%20Graph-live%20Studio%2FGateway-6f2?style=flat-square)](https://thegraph.com/studio/subgraph/ledger-guardian-agent)
+[![Demo](https://img.shields.io/badge/demo-ledger--gaurd.vercel.app-000?style=flat-square)](https://ledger-gaurd.vercel.app/)
 
-**Hardware-bounded delegation for autonomous DeFi exits.** Users clear-sign stop-loss / take-profit / buy-dip bounds on a Ledger OLED. A six-role keeper discovers policies via The Graph **Receipt Graph**, pays HBAR through **x402** (Blocky402) to attempt execution on Base, and indexes every fill as a compliance receipt. The master key never leaves the device; Key Ring holds keeper secrets.
+**Hardware-bounded delegation for autonomous DeFi exits — tested on Base mainnet, built for production.**
 
-![Landing page hero](docs/assets/landing-hero.png)
-<!-- REPLACE: full-page screenshot of localhost:3000/ (or /protect) landing, light mode, brand visible -->
+![LGA six-role architecture](docs/assets/lga-six-role-architecture.svg)
+
+```mermaid
+flowchart LR
+  IC["Intent Composer"] --> BA["Band Autopilot"]
+  BA --> MS["Market Solver"]
+  MS --> XP["x402 Payer"]
+  XP --> SD["Session Driver"]
+  SD --> RC["Receipt Clerk"]
+  RC -.->|indexes| BA
+```
+
+| Role | Code id | Job |
+|---|---|---|
+| **Intent Composer** | `composer` | Classify / draft — never pays, never fills |
+| **Band Autopilot** | `autopilot` | Watch Graph + Hermes; pay when in band |
+| **Market Solver** | `solver` | Messari / Pyth risk explain — no Graph tools |
+| **x402 Payer** | `payer` | HBAR micro-settle → unlock `/trigger` |
+| **Session Driver** | `driver` | `executePolicy` with Base session key |
+| **Receipt Clerk** | `clerk` | Receipt Graph / Subgraph MCP only |
+
+**Live product:** [https://ledger-gaurd.vercel.app/](https://ledger-gaurd.vercel.app/) · **Keeper:** [https://lga-keeper-production.up.railway.app](https://lga-keeper-production.up.railway.app)
+
+Master key never leaves Ledger. Key Ring holds keeper secrets. The Graph is load-bearing.
+
+---
+
+## Hardware / cryptographic boundary
+
+Three keys. Three jobs. No single process holds all three as “god mode.”
+
+| Key material | Who uses it | What it authorizes |
+|---|---|---|
+| **Ledger master key** | Intent Composer path + human HITL | Clear-sign `setGuardianPolicy` / `killSwitch` on OLED. Creates or destroys delegation. **Never exported to keeper, LLM, or Key Ring.** |
+| **Hedera pay material (Key Ring)** | **x402 Payer** | Micro-settlements: HBAR via Blocky402 to unlock `POST /trigger`. Scoped as `pay:trigger` / `pay:quote`. Does **not** sign Base fills. |
+| **Base session key (Key Ring)** | **Session Driver** | Band-gated `executePolicy` through **SessionKeyValidator** → GuardianPolicyManager → Uniswap. Capability `execute:policy:<id>`. Cannot widen policy bands. |
+
+```text
+Ledger OLED ──HITL──► Base policy / kill     (master key stays on device)
+Key Ring    ──pay───► Hedera x402 settle     (Payer only)
+Key Ring    ──exec──► SessionKeyValidator    (Driver only)
+Receipt Graph ◄────── ExecutionReceipt       (Clerk indexes; Autopilot reads)
+```
+
+Implementation:
+
+- Clear-sign: [`packages/hardware-test/src/policyTx.ts`](packages/hardware-test/src/policyTx.ts) · [`packages/web/src/lib/policyTx.ts`](packages/web/src/lib/policyTx.ts)
+- Key Ring load: [`packages/keeper/src/ring.ts`](packages/keeper/src/ring.ts)
+- Capability broker: [`packages/keeper/src/capabilities.ts`](packages/keeper/src/capabilities.ts)
+- Session fill: [`packages/keeper/src/executor.ts`](packages/keeper/src/executor.ts)
+
+---
+
+## Code deep-links (read the hot path)
+
+### Keeper roles
+
+| Role | File |
+|---|---|
+| Intent Composer / dispatch | [`packages/keeper/src/agent/orchestrate.ts`](packages/keeper/src/agent/orchestrate.ts) |
+| Market Solver | [`packages/keeper/src/agent/solver.ts`](packages/keeper/src/agent/solver.ts) |
+| Receipt Clerk | [`packages/keeper/src/agent/clerk.ts`](packages/keeper/src/agent/clerk.ts) · [`subgraphMcp.ts`](packages/keeper/src/agent/subgraphMcp.ts) |
+| x402 Payer | [`packages/keeper/src/paidTrigger.ts`](packages/keeper/src/paidTrigger.ts) · [`x402.ts`](packages/keeper/src/x402.ts) |
+| Band Autopilot | [`packages/keeper/src/payOnHit.ts`](packages/keeper/src/payOnHit.ts) |
+| Session Driver + cycle | [`packages/keeper/src/executor.ts`](packages/keeper/src/executor.ts) · [`cycle.ts`](packages/keeper/src/cycle.ts) |
+| Host `/trigger` | [`packages/keeper/src/index.ts`](packages/keeper/src/index.ts) |
+| HCS audit | [`packages/keeper/src/hcsAudit.ts`](packages/keeper/src/hcsAudit.ts) |
+
+### Base mainnet contracts ([Basescan](https://basescan.org))
+
+| Contract | Address |
+|---|---|
+| GuardianPolicyManager (BUY_DIP) | [`0xdBf463E260573797Dd1a03B4f45876aad777453b`](https://basescan.org/address/0xdBf463E260573797Dd1a03B4f45876aad777453b) |
+| SessionKeyValidator | [`0xf93f56DF8481144F507dFCf30712658202E164e4`](https://basescan.org/address/0xf93f56DF8481144F507dFCf30712658202E164e4) |
+| SwapExecutor | [`0x4767a9Deee297d73B72cDD850850D11B221034Ab`](https://basescan.org/address/0x4767a9Deee297d73B72cDD850850D11B221034Ab) |
+| Pyth | [`0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a`](https://basescan.org/address/0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a) |
+| Uniswap SwapRouter02 | [`0x2626664c2603336E57B271c5C0b26F421741e481`](https://basescan.org/address/0x2626664c2603336E57B271c5C0b26F421741e481) |
+
+Solidity: [`packages/contracts/`](packages/contracts/)
+
+### Hedera (x402 + HCS)
+
+| Artifact | ID / URL |
+|---|---|
+| HCS payment topic | [`0.0.10423816`](https://hashscan.io/testnet/topic/0.0.10423816) |
+| Example memo | `hcs://0.0.10423816/1` — [`docs/proofs/phase-d-hcs.md`](docs/proofs/phase-d-hcs.md) |
+| Unpaid 402 + paid settle | [`docs/proofs/x402-settle.md`](docs/proofs/x402-settle.md) |
+| Example settle tx | [`0.0.7162784@1789203702.106539865`](https://hashscan.io/testnet/transaction/0.0.7162784%401789203702.106539865) |
+
+### Mainnet txs (evidence)
+
+| What | Tx |
+|---|---|
+| Clear-sign policy | [`0x89d9ce25…`](https://basescan.org/tx/0x89d9ce25007ed4ab4d2b5a0ed39a183c8dba2bd0b23e999059fcf0323098746b) |
+| Kill switch | [`0x6a93c38a…`](https://basescan.org/tx/0x6a93c38a2278ffa2fbbdc7dbc76c642c6702a5102ff45053faeef55978895b8b) |
+| Take-profit fill | [`0xb6f315a4…`](https://basescan.org/tx/0xb6f315a435e6dfd19607d9b662fdb0415fd476a21937f0a2c7b8d78d882371d3) |
+
+Sponsor briefs: [`docs/sponsors/LEDGER.md`](docs/sponsors/LEDGER.md) · [`GRAPH.md`](docs/sponsors/GRAPH.md) · [`HEDERA.md`](docs/sponsors/HEDERA.md)
+
+---
+
+## Production posture
+
+| Surface | Network / deploy | Status |
+|---|---|---|
+| GuardianPolicyManager + fills | **Base mainnet (8453)** | Clear-sign, kill, Uniswap fills |
+| Pyth | Base mainnet + Hermes VAAs | Same feeds the contract verifies |
+| Receipt Graph | Studio + Gateway | Live policies / `ExecutionReceipt` — no mocks |
+| Web | Vercel | https://ledger-gaurd.vercel.app/ |
+| Keeper | Railway · `POLL_MS=0` | Host + consumer x402 |
+| Hedera x402 | `hedera:testnet` · Blocky402 | Live 402 → settle → attempt |
 
 ---
 
@@ -17,147 +127,62 @@
 
 Autonomous DeFi agents need to move funds when markets move — without a human online holding hot keys, and without an LLM ever constructing or broadcasting an irreversible transaction.
 
-Most “AI DeFi” demos collapse one of those constraints: either the model (or a server) holds the signing key, or the agent has unbounded wallet authority. LGA splits authority across three systems:
+LGA splits authority:
 
-1. **Ledger** grants what may be delegated (policy + kill) and holds the master key.
-2. **Base contracts + session key** (Key Ring) execute only when on-chain bands and Pyth checks pass.
-3. **Hedera x402** meters each execution *attempt*; **The Graph** is how the keeper knows which policies exist and whether fills were compliant.
+1. **Ledger master key** — HITL for policy + kill.
+2. **Base session key** — Driver fills only inside clear-signed bands + Pyth.
+3. **Hedera Key Ring pay path** — meters each attempt; **Receipt Graph** tells Autopilot what to evaluate and Clerk what filled.
 
-The LLM layer (Composer / Solver / Clerk) classifies, explains, and drafts. It does not pay and does not fill.
-
----
-
-## Architecture
-
-```mermaid
-flowchart TB
-  User["User + Ledger OLED"]
-  Web["packages/web"]
-  Comp["Composer<br/>classify / draft"]
-  Clerk["Clerk<br/>Receipt Graph"]
-  Solver["Solver<br/>risk / Messari"]
-  Payer["Payer<br/>x402 pay"]
-  Auto["Autopilot<br/>pay-on-hit"]
-  Driver["Driver<br/>executePolicy"]
-  Graph["Receipt Graph<br/>Subgraph Studio"]
-  Hedera["Hedera x402<br/>Blocky402"]
-  Base["GuardianPolicyManager<br/>Base"]
-
-  User -->|clear-sign policy / kill| Base
-  User --> Web
-  Web -->|SSE /agent/run| Comp
-  Comp -->|status| Clerk
-  Comp -->|risk| Solver
-  Comp -->|execute| Payer
-  Clerk --> Graph
-  Payer --> Hedera
-  Hedera -->|paid POST /trigger| Auto
-  Auto --> Graph
-  Auto --> Driver
-  Driver --> Base
-  Base -->|events| Graph
-```
-
-**Implementation entrypoints**
-
-| Role | Kind | Code |
-|---|---|---|
-| Composer / dispatch | LLM + router | [`packages/keeper/src/agent/orchestrate.ts`](packages/keeper/src/agent/orchestrate.ts) (`DISPATCH`) |
-| Clerk | LLM + Graph only | [`packages/keeper/src/agent/clerk.ts`](packages/keeper/src/agent/clerk.ts) |
-| Solver | LLM + Messari/Pyth | [`packages/keeper/src/agent/solver.ts`](packages/keeper/src/agent/solver.ts) |
-| Payer | Non-LLM | [`packages/keeper/src/paidTrigger.ts`](packages/keeper/src/paidTrigger.ts) |
-| Autopilot | Non-LLM | [`packages/keeper/src/payOnHit.ts`](packages/keeper/src/payOnHit.ts) |
-| Driver | Non-LLM | [`packages/keeper/src/executor.ts`](packages/keeper/src/executor.ts) |
-| Cycle | Graph → Pyth → fill | [`packages/keeper/src/cycle.ts`](packages/keeper/src/cycle.ts) |
-
-Agent trust boundaries (what chat can and cannot do): [`docs/AGENT_AUDIT.md`](docs/AGENT_AUDIT.md).
+Intent Composer / Market Solver / Receipt Clerk reason. They do not pay and do not fill.
 
 ---
 
 ## How it works
 
-### 1. Clear-sign a protection
+### 1. Clear-sign (Ledger master key)
 
-User drafts bands in the web Agent / Protect UI (or hardware-test). Ledger confirms `setGuardianPolicy` on Base.
+Protect / Agent drafts → OLED confirms `setGuardianPolicy` on Base.
 
 ![Policy draft form](docs/assets/policy-draft.png)
-<!-- REPLACE: screenshot of /protect/agent Policy draft card with editable bands + Confirm for Ledger -->
 
-**Proven clear-sign broadcast (hardware-test path):**  
-[Basescan `0x89d9ce25007ed4ab4d2b5a0ed39a183c8dba2bd0b23e999059fcf0323098746b`](https://basescan.org/tx/0x89d9ce25007ed4ab4d2b5a0ed39a183c8dba2bd0b23e999059fcf0323098746b) — also recorded in [`docs/LEDGER_DX_FEEDBACK.md`](docs/LEDGER_DX_FEEDBACK.md).
+### 2. Agents in hard scopes
 
-Additional policy / kill examples cited in [`docs/HACKATHON.md`](docs/HACKATHON.md):  
-[policy `0x6c249efd…`](https://basescan.org/tx/0x6c249efd8f5dcec73b33fc6d155e24f7f53274f2fb167bf8f6eae6d7cc27a7a9) · [kill `0x6a93c38a…`](https://basescan.org/tx/0x6a93c38a2278ffa2fbbdc7dbc76c642c6702a5102ff45053faeef55978895b8b).
-
-### 2. Agents reason inside hard scopes
-
-SSE run on `/protect/agent` animates only from keeper frames. Clerk alone hits Receipt Graph (`queryReceiptGraphNl`); Solver is blocked from Graph tools in code.
+SSE `/protect/agent`: Composer routes; Clerk → Graph only; Solver blocked from Graph tools.
 
 ![Console agent 3D mid-run](docs/assets/agent-ops-mid-run.png)
-<!-- REPLACE: /protect/agent with AgentOpsGraph mid-run — Composer→Clerk edge lit, tool_start visible -->
 
-![Event log with gate warn](docs/assets/gate-warn-log.png)
-<!-- REPLACE: agent event / SSE panel showing a real gate warn (proceed=false) from ensureSolverGate — capture from local keeper run -->
+### 3. Pay → evaluate → fill
 
-### 3. Pay to attempt; fill only if bands hit
-
-Unpaid `POST /trigger` → **402**. Paid settle (HBAR via Blocky402) → cycle evaluates policies from Graph + Pyth → Driver may `executePolicy`. **Payment ≠ fill.**
+Unpaid `/trigger` → **402**. x402 Payer settles HBAR → Band Autopilot / cycle → Session Driver may fill → Receipt Clerk indexes.
 
 ![x402 HashScan payment](docs/assets/x402-hashscan.png)
-<!-- REPLACE: HashScan testnet tx page for 0.0.7162784@1789203702.106539865 (or latest paid settle) -->
 
 ![Basescan fill tx](docs/assets/basescan-fill.png)
-<!-- REPLACE: Basescan page for a TAKE_PROFIT fill, e.g. 0x41a4e8ced5804985faaac056f03567460e15f66dbec2f8062065744448f1ac51 -->
-
-**Live paid settle (no fill that run — `evaluated:0`):** [`docs/proofs/x402-settle.md`](docs/proofs/x402-settle.md) · HashScan [settle tx](https://hashscan.io/testnet/transaction/0.0.7162784%401789203702.106539865) · HCS [`hcs://0.0.10423816/1`](https://hashscan.io/testnet/topic/0.0.10423816).
-
-**Indexed fills (Clerk live Studio):** [`docs/proofs/phase-c1.md`](docs/proofs/phase-c1.md) — tx hashes `0x41a4e8ce…f1ac51`, `0x5941f3d2…5303fe8`.
 
 ---
 
 ## Quickstart
 
 ```bash
-git clone <this-repo> && cd ledgergaurd
+git clone https://github.com/n1shanthb/Ledger-gaurd && cd Ledger-gaurd
 
-# Web (Protect + Agent UI)
-cd packages/web && cp ../../.env.example .env.local   # fill GRAPH_API_KEY, RPC, keeper URL
-npm install && npm run dev
-# → http://127.0.0.1:3000/protect
+cd packages/web && cp ../../.env.example .env.local
+npm install && npm run dev          # :3000
 
-# Keeper (agents + x402 host/consumer)
 cd ../keeper
-# Prefer Key Ring: see packages/keeper/README.md § Key Ring
 # WALLET_PASS=… LGA_SECRETS_SOURCE=ring POLL_MS=0 npm start
-npm install && npm start
-# → http://127.0.0.1:3001/health
+npm install && npm start            # :3001
 
-# Ledger clear-sign demo (USB)
-cd ../hardware-test && npm install && npm run dev
+cd ../hardware-test && npm install && npm run dev   # Ledger USB → Base mainnet
 ```
-
-**Public keeper (prize mode `POLL_MS=0`):** `https://lga-keeper-production.up.railway.app`  
-**Unpaid gate check:**
 
 ```bash
 curl -i -X POST https://lga-keeper-production.up.railway.app/trigger \
   -H "content-type: application/json" -d "{}"
-# expect HTTP 402 + payment-required — capture in docs/proofs/x402-settle.md
+# HTTP 402 Payment Required
 ```
 
-Env template: [`.env.example`](.env.example). Full prize matrix: [`docs/HACKATHON.md`](docs/HACKATHON.md).
-
----
-
-## Sponsor docs (open these)
-
-| Doc | What’s inside |
-|---|---|
-| [`docs/sponsors/GRAPH.md`](docs/sponsors/GRAPH.md) | Receipt Graph as load-bearing automation + Subgraph MCP Clerk + Messari compose — proofs and file map |
-| [`docs/sponsors/LEDGER.md`](docs/sponsors/LEDGER.md) | DMK clear-sign, Key Ring, capability broker, “session key never enters LLM context” |
-| [`docs/sponsors/HEDERA.md`](docs/sponsors/HEDERA.md) | x402 host+consumer, Blocky402 settle, HCS audit trail |
-
-Canonical product truth: [`docs/ANCHOR.md`](docs/ANCHOR.md). Agent room audit: [`docs/AGENT_AUDIT.md`](docs/AGENT_AUDIT.md).
+Env: [`.env.example`](.env.example) · Prize matrix: [`docs/HACKATHON.md`](docs/HACKATHON.md) · Anchor: [`docs/ANCHOR.md`](docs/ANCHOR.md)
 
 ---
 
@@ -165,35 +190,22 @@ Canonical product truth: [`docs/ANCHOR.md`](docs/ANCHOR.md). Agent room audit: [
 
 ```text
 packages/
-  web/             Protect + Agent ops UI (Next.js)
-  hardware-test/   Ledger DMK clear-sign + kill
-  contracts/       GuardianPolicyManager (Foundry)
-  subgraph/        Receipt Graph schema + mappings
-  keeper/          Agents, x402, Key Ring, cycle
-  graph-data/      Messari fan-out decisions
-clear-signing/     ERC-7730 descriptors
-docs/              Anchor, proofs, sponsor briefs
+  web/             Protect + Agent (Next.js) — Vercel
+  hardware-test/   DMK clear-sign + kill — Base mainnet
+  contracts/       GPM · SessionKeyValidator · SwapExecutor
+  subgraph/        Receipt Graph
+  keeper/          Six roles · x402 · Key Ring · cycle
+  graph-data/      Messari fan-out
+clear-signing/     ERC-7730
+docs/              Sponsors · proofs · this architecture SVG
 ```
-
----
-
-## Plan vs code (read before judging)
-
-These are intentional honesty notes, not TODOs disguised as features:
-
-| Topic | Plan / older docs | Current tree |
-|---|---|---|
-| Agent names | ANCHOR still mentions Coordinator / Sentinel / Oracle | Six ids: composer / solver / clerk / payer / autopilot / driver — [`phase-a.md`](docs/proofs/phase-a.md) |
-| Graph endpoint | Proofs + `.env.example` use **Studio** `…/v0.0.4` | Web proxy [`packages/web/src/app/api/receipt-graph/route.ts`](packages/web/src/app/api/receipt-graph/route.ts) prefers **Gateway** id `GfvNLa3…` and returns 503 if pointed at Studio |
-| GPM address | Multiple historical deploys | Confirm which address your `.env` / OLED flow uses before demos |
-| Railway Key Ring | Prize wants `headless=true` + ring | Captured health: `source=env`, `headless=false` — [`docs/proofs/phase-c2/railway-health.json`](docs/proofs/phase-c2/railway-health.json) |
 
 ---
 
 ## License
 
-[PROOF NEEDED: add a root `LICENSE` file and update the badge above]
+TBD — ETHOnline 2026.
 
 ## Team
 
-ETHOnline 2026 · **Start Fresh** (net-new) submission — Ledger × The Graph × Hedera.
+ETHOnline 2026 · **Start Fresh** · Ledger × The Graph × Hedera · **Base mainnet tested**.
