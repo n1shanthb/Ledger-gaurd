@@ -7,12 +7,16 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Panel";
 import { Badge } from "@/components/ui/Badge";
 import {
+  EXPLORER_URL,
   STUDIO_URL,
   SUBGRAPH_QUERY_URL,
   tokenLabel,
   usdFrom1e8,
 } from "@/lib/constants";
+import { receiptToFillNotice } from "@/lib/fillNotice";
+import { fetchOwnerReceipts } from "@/lib/fillWatch";
 import {
+  fetchOnchainOwnerFills,
   fetchRecentPolicyCreated,
   fetchStudioMeta,
   type OnchainPolicyCreated,
@@ -83,9 +87,11 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function ActivityDetail({
   item,
   onClose,
+  onReplayCongrats,
 }: {
   item: Item;
   onClose: () => void;
+  onReplayCongrats?: () => void;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -219,7 +225,7 @@ function ActivityDetail({
         <DetailRow label="Block" value={String(o.blockNumber)} />
         <DetailRow
           label="Note"
-          value="On Base — waiting for Receipt Graph Studio to catch tip"
+          value="On Base — waiting for Receipt Graph to index this tip"
         />
         <DetailRow label="Policy id" value={shortId(o.policyId)} />
       </dl>
@@ -270,6 +276,17 @@ function ActivityDetail({
               Basescan →
             </a>
           )}
+          {item.kind === "fill" && onReplayCongrats && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                onReplayCongrats();
+                onClose();
+              }}
+            >
+              Show congrats card
+            </Button>
+          )}
           <Button variant="ghost" onClick={onClose}>
             Close
           </Button>
@@ -290,12 +307,14 @@ export function ActivityTimeline({
   policies: PolicyRow[];
   error: string | null;
 }) {
-  const { ownerFilter, lastPolicyTx } = useProtection();
+  const { ownerFilter, lastPolicyTx, showFillCongrats } = useProtection();
   const [onchain, setOnchain] = useState<OnchainPolicyCreated[]>([]);
   const [studioBlock, setStudioBlock] = useState<number | null>(null);
   const [baseTip, setBaseTip] = useState<number | null>(null);
   const [chainErr, setChainErr] = useState<string | null>(null);
   const [open, setOpen] = useState<Item | null>(null);
+  const [replayBusy, setReplayBusy] = useState(false);
+  const [replayErr, setReplayErr] = useState<string | null>(null);
 
   useEffect(() => {
     let dead = false;
@@ -426,6 +445,43 @@ export function ActivityTimeline({
     });
   }, [receipts, kills, policies, ownerFilter, pending]);
 
+  async function replayLastFill() {
+    setReplayErr(null);
+    setReplayBusy(true);
+    try {
+      const mine = items.find((i) => i.kind === "fill");
+      if (mine && mine.kind === "fill") {
+        showFillCongrats(receiptToFillNotice(mine.receipt));
+        return;
+      }
+      const owner = ownerFilter?.toLowerCase();
+      if (!owner) {
+        setReplayErr("Connect Ledger on Protect so we know which fills to load.");
+        return;
+      }
+      const rows = await fetchOwnerReceipts(owner);
+      if (rows[0]) {
+        showFillCongrats(receiptToFillNotice(rows[0]));
+        return;
+      }
+      const onchain = await fetchOnchainOwnerFills({ owner });
+      if (onchain[0]) {
+        showFillCongrats(
+          receiptToFillNotice({
+            ...onchain[0],
+            timestamp: Math.floor(Date.now() / 1000),
+          }),
+        );
+        return;
+      }
+      setReplayErr("No indexed or on-chain fills for this wallet yet.");
+    } catch (e) {
+      setReplayErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setReplayBusy(false);
+    }
+  }
+
   if (error) {
     return (
       <p className="border-l-2 border-kill/50 pl-4 text-sm text-kill">
@@ -436,18 +492,34 @@ export function ActivityTimeline({
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          variant="ghost"
+          disabled={replayBusy}
+          onClick={() => void replayLastFill()}
+        >
+          {replayBusy ? "Loading fill…" : "Replay last fill card"}
+        </Button>
+        <p className="text-xs text-mute">
+          Opens the congrats modal from a real Receipt Graph / Base hit — not mock
+          data.
+        </p>
+        {replayErr && <p className="w-full text-xs text-kill">{replayErr}</p>}
+      </div>
+
       {(lag != null && lag > 50) || pending.length > 0 || lastPolicyTx ? (
         <div className="border-l-2 border-warn/60 pl-4" role="status">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-warn">
             Receipt Graph lag
           </p>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
-            Studio head
+            Indexer head
             {studioBlock != null ? ` #${studioBlock}` : ""}
             {baseTip != null ? ` · Base tip #${baseTip}` : ""}
             {lag != null ? ` · ~${lag} blocks behind` : ""}. On-chain clear-signs
-            show as <span className="text-paper">pending</span> until indexed.
-            Older Sep 6 fills below are real history — not your latest sign.
+            show as <span className="text-paper">pending</span> until Receipt
+            Graph indexes them. Older fills below are real history — not your
+            latest sign.
           </p>
           <div className="mt-3 flex flex-wrap gap-4 font-mono text-xs">
             {lastPolicyTx && (
@@ -460,6 +532,14 @@ export function ActivityTimeline({
                 Last clear-sign →
               </a>
             )}
+            <a
+              href={EXPLORER_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-mute hover:text-paper"
+            >
+              Explorer →
+            </a>
             <a
               href={STUDIO_URL}
               target="_blank"
@@ -486,8 +566,8 @@ export function ActivityTimeline({
           }
           body={
             lastPolicyTx
-              ? "You signed a protection — indexing can lag when Studio is behind Base. Use the Basescan link above."
-              : "Connect Ledger on Protect, clear-sign a policy, then return here for the timeline."
+              ? "You signed a protection — indexing can lag when Receipt Graph is behind Base. Use the Basescan link above."
+              : "Connect Ledger on Protect, clear-sign a policy, then return here for fills, kills, and indexed policy events."
           }
         />
       ) : (
@@ -604,7 +684,17 @@ export function ActivityTimeline({
         </ul>
       )}
 
-      {open && <ActivityDetail item={open} onClose={() => setOpen(null)} />}
+      {open && (
+        <ActivityDetail
+          item={open}
+          onClose={() => setOpen(null)}
+          onReplayCongrats={
+            open.kind === "fill"
+              ? () => showFillCongrats(receiptToFillNotice(open.receipt))
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

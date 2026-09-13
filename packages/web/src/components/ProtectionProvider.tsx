@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import type { Address } from "viem";
+import { FillWatchOverlay } from "@/components/protect/FillWatchOverlay";
+import type { FillNotice } from "@/lib/fillNotice";
 
 export type ProductMode = "demo" | "live";
 export type JourneyStage =
@@ -43,6 +45,13 @@ export type ProtectionContextValue = {
   lastKillTx: string | null;
   setLastKillTx: (tx: string | null) => void;
   ownerFilter: Address | null;
+  /** Bump to arm site-wide fill watch (congrats popup). */
+  fillWatchNonce: number;
+  fillWatchRequest: { owner: string; fromTs: number } | null;
+  startFillWatch: (owner: string, fromTs?: number) => void;
+  /** Replay congrats from a real prior fill (Graph / on-chain). */
+  fillCongratsReplay: { notice: FillNotice; nonce: number } | null;
+  showFillCongrats: (notice: FillNotice) => void;
 };
 
 const ProtectionContext = createContext<ProtectionContextValue | null>(null);
@@ -63,6 +72,15 @@ export function ProtectionProvider({ children }: { children: ReactNode }) {
   const [killConfirmed, setKillConfirmed] = useState(false);
   const [lastPolicyTx, setLastPolicyTxState] = useState<string | null>(null);
   const [lastKillTx, setLastKillTxState] = useState<string | null>(null);
+  const [fillWatchNonce, setFillWatchNonce] = useState(0);
+  const [fillWatchRequest, setFillWatchRequest] = useState<{
+    owner: string;
+    fromTs: number;
+  } | null>(null);
+  const [fillCongratsReplay, setFillCongratsReplay] = useState<{
+    notice: FillNotice;
+    nonce: number;
+  } | null>(null);
 
   useEffect(() => {
     try {
@@ -131,6 +149,21 @@ export function ProtectionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const startFillWatch = useCallback((owner: string, fromTs?: number) => {
+    setFillWatchRequest({
+      owner,
+      fromTs: fromTs ?? Math.floor(Date.now() / 1000) - 30,
+    });
+    setFillWatchNonce((n) => n + 1);
+  }, []);
+
+  const showFillCongrats = useCallback((notice: FillNotice) => {
+    setFillCongratsReplay((prev) => ({
+      notice,
+      nonce: (prev?.nonce ?? 0) + 1,
+    }));
+  }, []);
+
   const value = useMemo<ProtectionContextValue>(
     () => ({
       mode,
@@ -152,6 +185,11 @@ export function ProtectionProvider({ children }: { children: ReactNode }) {
       lastKillTx,
       setLastKillTx,
       ownerFilter: ledgerAddress,
+      fillWatchNonce,
+      fillWatchRequest,
+      startFillWatch,
+      fillCongratsReplay,
+      showFillCongrats,
     }),
     [
       mode,
@@ -168,12 +206,18 @@ export function ProtectionProvider({ children }: { children: ReactNode }) {
       setLastPolicyTx,
       lastKillTx,
       setLastKillTx,
+      fillWatchNonce,
+      fillWatchRequest,
+      startFillWatch,
+      fillCongratsReplay,
+      showFillCongrats,
     ],
   );
 
   return (
     <ProtectionContext.Provider value={value}>
       {children}
+      <FillWatchOverlay />
     </ProtectionContext.Provider>
   );
 }

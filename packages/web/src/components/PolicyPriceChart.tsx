@@ -222,13 +222,50 @@ export function PolicyPriceChart({
           .sort((a, b) => (a!.d - b!.d) as number)[0]
       : null;
 
+  /** Same band rule as keeper Autopilot (`shouldTrigger`). */
+  const inBand =
+    live != null &&
+    ((stop != null && live <= stop) || (take != null && live >= take));
+  const waitHint =
+    live == null
+      ? null
+      : inBand
+        ? "In band — Autopilot can pay and fill when the host is watching."
+        : buy
+          ? stop != null && take != null
+            ? `Waiting: buy when spot ≤ $${stop.toFixed(2)} or ≥ $${take.toFixed(2)} (Hermes).`
+            : stop != null
+              ? `Waiting: buy when spot ≤ $${stop.toFixed(2)} (Hermes).`
+              : take != null
+                ? `Waiting: buy when spot ≥ $${take.toFixed(2)} (Hermes).`
+                : null
+          : stop != null && take != null
+            ? `Waiting: fill when spot ≤ $${stop.toFixed(2)} or ≥ $${take.toFixed(2)} (Hermes — not chart Δ).`
+            : stop != null
+              ? `Waiting: fill when spot ≤ $${stop.toFixed(2)} (Hermes).`
+              : take != null
+                ? `Waiting: fill when spot ≥ $${take.toFixed(2)} (Hermes).`
+                : null;
+
   return (
     <div className="mt-10">
       <h3 className="font-display text-xl text-paper">Price vs policy</h3>
       <p className="mt-1 text-sm text-mute">
         Live marker = on-chain Pyth. History may be Benchmarks or Coinbase display — not
-        Graph.
+        Graph. Autopilot uses Hermes latest (same as the VAA it posts).
       </p>
+
+      {waitHint && (
+        <p
+          className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+            inBand
+              ? "border-signal/40 bg-signal/10 text-signal"
+              : "border-mist bg-panel text-mute"
+          }`}
+        >
+          {waitHint}
+        </p>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-3 font-mono text-xs text-mute">
         <span className="rounded-full border border-mist px-3 py-1.5 text-paper">

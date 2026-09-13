@@ -1,7 +1,21 @@
+import {
+  encodeEventTopics,
+  parseAbiItem,
+  type Hex,
+} from "viem";
 import { GPM_V2, SUBGRAPH_QUERY_URL, subgraphAuthHeaders } from "@/lib/constants";
 
 const POLICY_CREATED_TOPIC =
   "0xc0ef32a861a2cbcfc8adbaef809425e06c37350c1035bbcca774693fb590ac8a";
+
+const EXEC_RECEIPT_EVENT = parseAbiItem(
+  "event ExecutionReceipt(bytes32 indexed policyId, address indexed owner, bytes32 indexed receiptId, uint8 triggerType, uint256 pythPrice, uint256 executionPrice, uint256 maxSlippageBps, uint256 actualSlippageBps, bool compliant)",
+);
+
+const EXEC_TOPIC = encodeEventTopics({
+  abi: [EXEC_RECEIPT_EVENT],
+  eventName: "ExecutionReceipt",
+})[0] as Hex;
 
 export type OnchainPolicyCreated = {
   policyId: string;
@@ -127,4 +141,72 @@ export async function fetchStudioMeta(
   } catch {
     return null;
   }
+}
+
+export type OnchainFillReceipt = {
+  policyId: string;
+  owner: string;
+  triggerType: number;
+  pythPrice: string;
+  executionPrice: string;
+  actualSlippageBps: string;
+  compliant: boolean;
+  txHash: string;
+  blockNumber: number;
+};
+
+/** Live Base logs — popup must not wait on Graph index. */
+export async function fetchOnchainOwnerFills(opts: {
+  owner: string;
+  lookbackBlocks?: number;
+}): Promise<OnchainFillReceipt[]> {
+  const tipHex = await rpc<string>("eth_blockNumber", []);
+  const tip = Number.parseInt(tipHex, 16);
+  const lookback = opts.lookbackBlocks ?? 8_000;
+  const fromBlock = Math.max(0, tip - lookback);
+  const owner = opts.owner.toLowerCase();
+  const ownerTopic = `0x${owner.replace(/^0x/, "").padStart(64, "0")}`;
+
+  const logs = await rpc<
+    {
+      address: string;
+      topics: string[];
+      data: string;
+      transactionHash: string;
+      blockNumber: string;
+    }[]
+  >("eth_getLogs", [
+    {
+      address: GPM_V2,
+      fromBlock: `0x${fromBlock.toString(16)}`,
+      toBlock: "latest",
+      topics: [EXEC_TOPIC, null, ownerTopic],
+    },
+  ]);
+
+  const out: OnchainFillReceipt[] = [];
+  for (const log of logs ?? []) {
+    const data = log.data.startsWith("0x") ? log.data.slice(2) : log.data;
+    if (data.length < 64 * 6) continue;
+    const word = (i: number) => data.slice(i * 64, i * 64 + 64);
+    const triggerType = Number.parseInt(word(0), 16);
+    const pythPrice = BigInt(`0x${word(1)}`).toString();
+    const executionPrice = BigInt(`0x${word(2)}`).toString();
+    const actualSlippageBps = BigInt(`0x${word(4)}`).toString();
+    const compliant = BigInt(`0x${word(5)}`) !== 0n;
+    const policyId = log.topics[1] ?? "0x";
+    out.push({
+      policyId,
+      owner: topicAddr(log.topics[2] ?? ""),
+      triggerType,
+      pythPrice,
+      executionPrice,
+      actualSlippageBps,
+      compliant,
+      txHash: log.transactionHash,
+      blockNumber: Number.parseInt(log.blockNumber, 16),
+    });
+  }
+  out.sort((a, b) => b.blockNumber - a.blockNumber);
+  return out;
 }

@@ -5,10 +5,12 @@ export type OwnerReceipt = {
   triggerType: string | number;
   pythPrice: string;
   executionPrice: string;
+  maxSlippageBps?: string;
+  actualSlippageBps?: string;
   compliant: boolean;
   txHash: string;
   timestamp: string;
-  policy: { id: string };
+  policy: { id: string; token?: string; policyType?: string | number };
 };
 
 async function receiptGraphFetch(body: string): Promise<Response> {
@@ -42,8 +44,8 @@ export async function fetchOwnerReceipts(
           orderDirection: desc
           where: { owner: "${o}" }
         ) {
-          id triggerType pythPrice executionPrice compliant txHash timestamp
-          policy { id }
+          id triggerType pythPrice executionPrice maxSlippageBps actualSlippageBps compliant txHash timestamp
+          policy { id token policyType }
         }
       }`,
     }),
