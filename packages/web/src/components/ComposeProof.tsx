@@ -62,8 +62,8 @@ export function ComposeProof() {
 
       {q.isLoading && (
         <p className="mt-3 text-sm text-mute">
-          Fan-out Messari lending + DEX (first load can take ~15–30s; then
-          cached)…
+          Fan-out Messari lending + DEX (first load ~15–30s on cold Gateway;
+          then cached ~5 min)…
         </p>
       )}
       {q.isFetching && !q.isLoading && (
@@ -84,7 +84,7 @@ export function ComposeProof() {
         </div>
       )}
 
-      {gate && (
+      {!q.isLoading && gate && (
         <div
           className={`mt-4 rounded-lg border px-3 py-2 text-sm ${
             gate.proceed
@@ -103,6 +103,7 @@ export function ComposeProof() {
         </div>
       )}
 
+      {!q.isLoading && (lending || dex) && (
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-line bg-ink/40 p-3">
           <p className="text-[10px] uppercase tracking-wide text-mute">
@@ -135,8 +136,9 @@ export function ComposeProof() {
           )}
         </div>
       </div>
+      )}
 
-      {lending && lending.matrix.length > 0 && (
+      {!q.isLoading && lending && lending.matrix.length > 0 && (
         <div className="mt-5 overflow-x-auto">
           <h4 className="text-xs font-medium uppercase tracking-wide text-mute">
             Lending matrix (per protocol)
@@ -169,7 +171,7 @@ export function ComposeProof() {
         </div>
       )}
 
-      {dex && dex.matrix.length > 0 && (
+      {!q.isLoading && dex && dex.matrix.length > 0 && (
         <div className="mt-5 overflow-x-auto">
           <h4 className="text-xs font-medium uppercase tracking-wide text-mute">
             DEX matrix (WETH · per protocol)
@@ -200,6 +202,7 @@ export function ComposeProof() {
         </div>
       )}
 
+      {!q.isLoading && (
       <p className="mt-4 font-mono text-[11px] leading-relaxed text-mute">
         lending ok={lending?.deploymentsOk ?? "—"} · dex ok=
         {dex?.deploymentsOk ?? "—"}
@@ -208,6 +211,7 @@ export function ComposeProof() {
           : ""}
         {q.data?.note ? ` · ${q.data.note}` : ""}
       </p>
+      )}
     </section>
   );
 }
