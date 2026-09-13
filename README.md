@@ -93,8 +93,9 @@ Solidity: [`packages/contracts/`](packages/contracts/)
 
 | Artifact | ID / URL |
 |---|---|
-| HCS payment topic | [`0.0.10423816`](https://hashscan.io/testnet/topic/0.0.10423816) |
+| HCS payment topic | [`0.0.10423816` messages](https://hashscan.io/testnet/topic/0.0.10423816/messages) |
 | Example memo | `hcs://0.0.10423816/1` — [`docs/proofs/phase-d-hcs.md`](docs/proofs/phase-d-hcs.md) |
+| Agent ids (HCS-14-light) | [`packages/keeper/src/agentIdentity.ts`](packages/keeper/src/agentIdentity.ts) — `composer` · `autopilot` · `solver` · `payer` · `driver` · `clerk` |
 | Unpaid 402 + paid settle | [`docs/proofs/x402-settle.md`](docs/proofs/x402-settle.md) |
 | Example settle tx | [`0.0.7162784@1789203702.106539865`](https://hashscan.io/testnet/transaction/0.0.7162784%401789203702.106539865) |
 

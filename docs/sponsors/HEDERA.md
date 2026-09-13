@@ -9,7 +9,7 @@
 
 ## Claim
 
-Hedera meters every keeper **execution attempt**. The same process **hosts** an x402-gated `POST /trigger` (and cheaper `POST /quote`) and **consumes** it as Payer / Autopilot / `npm run pay` — paying HBAR via Blocky402 on `hedera:testnet` (demo network; same host+consumer architecture for mainnet facilitator config). Settle is independent of Base fills: payment unlocks evaluation; Graph + Pyth + on-chain bands decide whether Driver broadcasts on **Base mainnet**. Optional **HCS** memos attach a HashScan-auditable ref (`hcsRef`) to paid attempts.
+Hedera meters every keeper **execution attempt**. The same process **hosts** an x402-gated `POST /trigger` (and cheaper `POST /quote`) and **consumes** it as Payer / Autopilot / `npm run pay` — paying HBAR via Blocky402 on `hedera:testnet` (demo network; same host+consumer architecture for mainnet facilitator config). Settle is independent of Base fills: payment unlocks evaluation; Graph + Pyth + on-chain bands decide whether Driver broadcasts on **Base mainnet**. **HCS** memos attach HashScan-auditable refs (`hcsRef`); **HCS-14-light agent ids** (`payer` / `autopilot` / `cli` / …) stamp who spent the pay capability, with a six-role roster on the same topic.
 
 Without Hedera/x402, prize-mode keeper (`POLL_MS=0`) has no paid gate — free autopoll would violate the “pay to attempt” product.
 
@@ -35,7 +35,8 @@ Base policy signatures and Graph indexing still matter, but the **agentic paymen
 |---|---|
 | Unpaid `/trigger` → 402 + paid settle writeup | [`docs/proofs/x402-settle.md`](../proofs/x402-settle.md) |
 | HashScan settle (example) | https://hashscan.io/testnet/transaction/0.0.7162784%401789203702.106539865 |
-| HCS topic | https://hashscan.io/testnet/topic/0.0.10423816 |
+| HCS topic (messages) | https://hashscan.io/testnet/topic/0.0.10423816/messages |
+| Agent roster / HCS-14-light IDs | [`packages/keeper/src/agentIdentity.ts`](../../packages/keeper/src/agentIdentity.ts) · `/health.hederaAgents` |
 | Keeper health (prize mode) | https://lga-keeper-production.up.railway.app/health |
 | Architecture README | [`packages/keeper/README.md`](../../packages/keeper/README.md) |
 | Base mainnet fill after paid Autopilot path | https://basescan.org/tx/0xb6f315a435e6dfd19607d9b662fdb0415fd476a21937f0a2c7b8d78d882371d3 |
@@ -43,6 +44,26 @@ Base policy signatures and Graph indexing still matter, but the **agentic paymen
 | Band Autopilot | [`packages/keeper/src/payOnHit.ts`](../../packages/keeper/src/payOnHit.ts) |
 | x402 middleware | [`packages/keeper/src/x402.ts`](../../packages/keeper/src/x402.ts) |
 | HCS audit | [`packages/keeper/src/hcsAudit.ts`](../../packages/keeper/src/hcsAudit.ts) |
+
+### Agent IDs (HCS-14-light)
+
+Six named workers stamp Hedera pays — not one anonymous hot wallet:
+
+| Agent id | Role |
+|---|---|
+| `composer` | Intent draft / classify |
+| `autopilot` | Band watch → pay-on-hit |
+| `solver` | Risk / Messari (no pay) |
+| `payer` | Chat execute → x402 |
+| `driver` | Base session fill |
+| `clerk` | Receipt Graph only |
+
+- Header: `x-lga-agent: payer|autopilot|cli|…` on paid `/trigger`
+- Payment memo + `hederaPaymentRef` carry `agent=<id>`
+- Boot publishes `lga.agent.roster` on the same HCS topic ([messages](https://hashscan.io/testnet/topic/0.0.10423816/messages))
+- Code: [`agentIdentity.ts`](../../packages/keeper/src/agentIdentity.ts) · pin with `HCS_ROSTER_REF=hcs://0.0.10423816/<seq>`
+
+This is **HCS-14-light** (named agent ids on HCS + honor-system header). Full cryptographic HCS-14 / ERC-8004 DIDs are not claimed.
 
 ```bash
 curl -i -X POST https://lga-keeper-production.up.railway.app/trigger \
@@ -107,7 +128,7 @@ Detail: [`docs/proofs/x402-settle.md`](../proofs/x402-settle.md) § Paid.
 | Field | Value |
 |---|---|
 | Ref | `hcs://0.0.10423816/1` |
-| Topic | https://hashscan.io/testnet/topic/0.0.10423816 |
+| Topic messages | https://hashscan.io/testnet/topic/0.0.10423816/messages |
 | Write-up | [`docs/proofs/phase-d-hcs.md`](../proofs/phase-d-hcs.md) |
 | Phase D summary | [`docs/proofs/phase-d.md`](../proofs/phase-d.md) |
 
@@ -154,9 +175,10 @@ Extras:
 
 | Extra | Status |
 |---|---|
-| Verifiable payment audit (HCS) | Proof #3 |
+| Verifiable payment audit (HCS) | Proof #3 · [messages](https://hashscan.io/testnet/topic/0.0.10423816/messages) |
 | Second metered endpoint `/quote` | Proof #4 |
-| Full HCS-14 / ERC-8004 agent DIDs | **Not claimed** — light roster / `x-lga-agent` tags only ([`phase-d.md`](../proofs/phase-d.md) SKIP notes) |
+| Agent identity (HCS-14) | Six ids + HCS roster + `agent=` tags — [`agentIdentity.ts`](../../packages/keeper/src/agentIdentity.ts) |
+
 
 Satisfies: **“live x402-gated service on Hedera testnet”** — proof #1.  
 Satisfies: **“≥1 real paid request end-to-end”** — proof #2.
