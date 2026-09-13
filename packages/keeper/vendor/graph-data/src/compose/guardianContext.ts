@@ -16,7 +16,7 @@ async function fetchReceiptPolicies(first = 20): Promise<ReceiptPolicy[]> {
     process.env.GRAPH_API_KEY?.trim() ||
     process.env.NEXT_PUBLIC_GRAPH_API_KEY?.trim();
   // Studio may accept unauthenticated public queries; Bearer optional.
-  if (studioKey && url.includes("studio.thegraph.com")) {
+  if (studioKey && /thegraph\.com/.test(url)) {
     headers.Authorization = `Bearer ${studioKey}`;
   }
 
