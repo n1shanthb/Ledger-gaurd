@@ -197,11 +197,14 @@ export function instantTriggerDefaults(spotUsd: number | null): {
   takeProfitUsd: string;
   maxAmount: string;
 } {
-  // Stop ABOVE spot → already triggered (spot <= stop)
-  const stop = spotUsd != null ? Math.ceil(spotUsd * 1.5) : 10000;
+  // Stop ABOVE spot → already in range (spot <= stop). Cushion so fresh VAAs still hit.
+  const cushion =
+    spotUsd != null ? Math.max(25, Math.round(spotUsd * 0.01)) : 50;
+  const stop =
+    spotUsd != null ? Math.ceil(spotUsd + cushion) : 10000;
   return {
     stopLossUsd: String(stop),
-    takeProfitUsd: "1",
+    takeProfitUsd: "0",
     maxAmount: "0.0001",
   };
 }
