@@ -42,7 +42,7 @@ function tryParseJson(raw: string): Record<string, unknown> | null {
 /** Pull addresses + JSON into UI blocks; leave a short prose summary. */
 export function parseChatBlocks(raw: string): ChatBlock[] {
   const blocks: ChatBlock[] = [];
-  let rest = raw;
+  const rest = raw;
   const jsonHits: { start: number; end: number; obj: Record<string, unknown> }[] =
     [];
 
@@ -103,7 +103,8 @@ export function parseChatBlocks(raw: string): ChatBlock[] {
           address: contract,
           label: "PaymentAudit contract",
         });
-        const { contract: _c, ...restObj } = hit.obj;
+        const restObj = { ...hit.obj };
+        delete restObj.contract;
         if (Object.keys(restObj).length > 0) {
           blocks.push({ kind: "json", label, value: restObj });
         }

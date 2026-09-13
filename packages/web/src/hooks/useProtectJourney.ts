@@ -529,7 +529,7 @@ export function useProtectJourney() {
         setFillNotice(null);
         setFillCongratsOpen(false);
         setWatchingFills(true);
-        protection.startFillWatch(from, watchFromTs.current);
+        startFillWatch(from, watchFromTs.current);
         setStage("monitor");
         pushLog("success", `Policy on-chain — ${result.txHash}`);
         pushLog(
@@ -562,6 +562,7 @@ export function useProtectJourney() {
     limitsAck,
     setLastPolicyTx,
     setStage,
+    startFillWatch,
   ]);
 
   const submitKill = useCallback(async () => {
