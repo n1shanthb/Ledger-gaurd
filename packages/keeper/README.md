@@ -86,18 +86,7 @@ Facilitator: Blocky402 (`BLOCKY402_FACILITATOR_URL`, typically `https://api.test
 
 ## OpenRouter multi-agent (Phase A)
 
-One Key Ring key (`OPENROUTER_API_KEY`), per-agent models (legacy `*_COORDINATOR` / `*_ORACLE` / `*_SENTINEL` aliases still work):
-
-| Agent | Env | Default role |
-|---|---|---|
-| Composer | `OPENROUTER_MODEL_COMPOSER` | classify pipeline (no tools) |
-| Clerk | `OPENROUTER_MODEL_CLERK` | Receipt Graph + recent payments |
-| Solver | `OPENROUTER_MODEL_SOLVER` | explain after code-first `evaluateSwapGate` |
-| Payer | — | non-LLM x402 `postPaidTrigger` on execute |
-| Autopilot / Driver | — | pay-on-hit + Base fill (no LLM) |
-
-Fallback: `OPENROUTER_MODEL` → `openai/gpt-4o-mini`. Solver defaults to `gpt-4o-mini`.
-
+One Key Ring secret (`OPENROUTER_API_KEY`). Models are set in `ring.ts` (`openai/gpt-4o-mini` for composer / solver / clerk). Payer / Autopilot / Driver stay non-LLM.
 ```bash
 # JSON
 curl -s -X POST http://127.0.0.1:3001/agent/chat \

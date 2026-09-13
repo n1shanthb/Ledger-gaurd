@@ -37,8 +37,6 @@ Set `PAY_ON_HIT=1` (default in Dockerfile). Hot path = `PAY_ON_HIT` — Autopilo
 PAY_ON_HIT=1
 WATCH_MS=30000
 POLL_MS=0
-# optional — keep solver explain on mini (legacy ORACLE may be Sonnet)
-OPENROUTER_MODEL_SOLVER=openai/gpt-4o-mini
 ```
 
 Optional local-only watcher (laptop):

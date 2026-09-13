@@ -190,10 +190,20 @@ function readDotEnv(): Record<string, string> {
 
 /** Fill keys missing from ring bag (stale enroll) from .env / process.env. */
 function fillMissingFromEnv(bag: Record<string, string>): string[] {
-  const envBag = readDotEnv();
+  const envFile = readDotEnv();
   const filled: string[] = [];
+  // Ops/runtime knobs - not prize secrets; ok if only in process.env
+  const opsOnly = new Set([
+    "KEEPER_PORT",
+    "PORT",
+    "POLL_MS",
+    "PAY_ON_HIT",
+    "KEEPER_URL",
+    "LGA_SECRETS_SOURCE",
+    "WALLET_PASS",
+  ]);
   const keys = new Set([
-    ...Object.keys(envBag),
+    ...Object.keys(envFile),
     ...Object.keys(process.env).filter((k) =>
       /^(KEEPER_|BASE_|SUBGRAPH_|GRAPH_|GUARDIAN_|BLOCKY|X402_|PYTH_|HEDERA_|OPENROUTER_|HCS_|PAYMENT_)/.test(
         k,
@@ -201,8 +211,9 @@ function fillMissingFromEnv(bag: Record<string, string>): string[] {
     ),
   ]);
   for (const k of keys) {
+    if (opsOnly.has(k)) continue;
     if (bag[k]) continue;
-    const v = envBag[k] ?? process.env[k];
+    const v = envFile[k] ?? process.env[k];
     if (!v) continue;
     bag[k] = v;
     filled.push(k);
@@ -269,7 +280,6 @@ export function loadSecrets(): KeeperSecrets {
       ? "hedera:mainnet"
       : "hedera:testnet";
   const accountId = get(bag, "HEDERA_ACCOUNT_ID", "");
-  const defaultModel = get(bag, "OPENROUTER_MODEL", "openai/gpt-4o-mini");
 
   return {
     source,
@@ -297,21 +307,12 @@ export function loadSecrets(): KeeperSecrets {
     hederaNetwork,
     hederaAccountId: accountId,
     openRouterApiKey: get(bag, "OPENROUTER_API_KEY", ""),
-    openRouterModel: defaultModel,
+    // Models live in code — only the API key is ring/env secret.
+    openRouterModel: "openai/gpt-4o-mini",
     openRouterModels: {
-      // New names; legacy COORDINATOR / SENTINEL aliases still accepted.
-      // Solver defaults to mini (do not inherit heavy OPENROUTER_MODEL_ORACLE).
-      composer: get(
-        bag,
-        "OPENROUTER_MODEL_COMPOSER",
-        get(bag, "OPENROUTER_MODEL_COORDINATOR", "openai/gpt-4o-mini"),
-      ),
-      solver: get(bag, "OPENROUTER_MODEL_SOLVER", "openai/gpt-4o-mini"),
-      clerk: get(
-        bag,
-        "OPENROUTER_MODEL_CLERK",
-        get(bag, "OPENROUTER_MODEL_SENTINEL", "openai/gpt-4o-mini"),
-      ),
+      composer: "openai/gpt-4o-mini",
+      solver: "openai/gpt-4o-mini",
+      clerk: "openai/gpt-4o-mini",
     },
     hcsTopicId: get(bag, "HCS_TOPIC_ID", ""),
     paymentAuditLog: get(bag, "PAYMENT_AUDIT_LOG", ""),
