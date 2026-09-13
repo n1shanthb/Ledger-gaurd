@@ -98,8 +98,8 @@ function JsonBox({
           Receipt Graph
         </p>
         <p className="mt-1 text-sm text-paper">
-          Receipt Graph query limited (HTTP 429). If this persists, confirm
-          Gateway URL (not Studio) and restart web/keeper. Not a Ledger or
+          Receipt Graph query limited (HTTP 429). Prefer Gateway for web
+          Activity; Clerk still needs a healthy Graph endpoint. Not a Ledger or
           wallet error — no fill claimed.
         </p>
       </div>
@@ -337,7 +337,8 @@ export function KeeperAgentPanel() {
             Chat
           </p>
           <p className="mt-1 text-xs text-mute">
-            Ask anything — payments still aren’t fills.
+            Clerk reads Receipt Graph; Solver uses Messari compose; Payer pays
+            x402 — payments still aren’t fills.
           </p>
           {!protection?.ledgerAddress && (
             <p className="mt-2 text-xs text-warn/90">
@@ -414,7 +415,7 @@ export function KeeperAgentPanel() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onComposerKey}
             disabled={busy}
-            placeholder="Message agents…"
+            placeholder="Ask status, risk, or draft a protection…"
             aria-label="Message agents"
           />
           <Button
@@ -434,7 +435,7 @@ export function KeeperAgentPanel() {
             }
             className="font-mono text-[10px] uppercase tracking-wider text-mute hover:text-signal disabled:opacity-40"
           >
-            Clerk status
+            Clerk · Graph status
           </button>
           <details className="ml-auto">
             <summary className="cursor-pointer font-mono text-[10px] uppercase text-mute">
@@ -581,6 +582,10 @@ export function KeeperAgentPanel() {
                     protection.setLastPolicyTx(r.txHash);
                     protection.setLedgerAddress(r.from);
                     protection.setConnected(true);
+                    protection.startFillWatch(
+                      r.from,
+                      Math.floor(Date.now() / 1000) - 30,
+                    );
                   }
                 });
               }}

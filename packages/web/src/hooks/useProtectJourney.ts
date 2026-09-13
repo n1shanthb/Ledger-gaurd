@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { BASE_TOKENS } from "@/lib/abi";
-import { GPM_V2, usdFrom1e8 } from "@/lib/constants";
+import { GPM_V2 } from "@/lib/constants";
 import { fetchHoldings, type AssetHolding } from "@/lib/holdings";
 import { signAndSendKillSwitch } from "@/lib/killSwitchTx";
 import {
@@ -15,7 +15,7 @@ import {
   type ConnectionState,
   type LogEntry,
 } from "@/lib/ledger";
-import { fetchOwnerReceipts, fetchPythBand } from "@/lib/fillWatch";
+import { fetchPythBand } from "@/lib/fillWatch";
 import {
   enableKeeperSession,
   instantTriggerDefaults,
@@ -38,21 +38,15 @@ import {
   type ProductMode,
 } from "@/components/ProtectionProvider";
 
+export type { FillNotice } from "@/lib/fillNotice";
+import type { FillNotice } from "@/lib/fillNotice";
+
 export const ACCOUNTS = [
   { index: 0, label: "Account 1" },
   { index: 1, label: "Account 2 (test)" },
   { index: 2, label: "Account 3" },
   { index: 3, label: "Account 4" },
 ];
-
-export type FillNotice = {
-  trigger: string;
-  pyth: string;
-  fill: string;
-  when: string;
-  tx: string;
-  compliant: boolean;
-};
 
 export type JourneyPhase =
   | "idle"
@@ -84,6 +78,7 @@ export function useProtectJourney() {
     setLastKillTx,
     lastKillTx,
     killConfirmed,
+    startFillWatch,
   } = protection;
 
   const [conn, setConn] = useState<ConnectionState>({ status: "disconnected" });
@@ -98,11 +93,24 @@ export function useProtectJourney() {
   const [safeUnplug, setSafeUnplug] = useState(false);
   const [watchingFills, setWatchingFills] = useState(false);
   const [fillNotice, setFillNotice] = useState<FillNotice | null>(null);
+  const [fillCongratsOpen, setFillCongratsOpen] = useState(false);
   const [limitsAck, setLimitsAck] = useState(false);
   const [killAck, setKillAck] = useState(false);
   const [keeperHealth, setKeeperHealth] = useState<string | null>(null);
   const [paidAttemptMsg, setPaidAttemptMsg] = useState<string | null>(null);
   const [paidAttemptBusy, setPaidAttemptBusy] = useState(false);
+  const [hederaPays, setHederaPays] = useState<
+    {
+      attemptId: string;
+      paidAt: number;
+      hashscanUrl?: string | null;
+      hcsRef?: string | null;
+      hcsTopicUrl?: string | null;
+      agentId?: string | null;
+      path?: string;
+      executed?: { policyId: string; trigger: string; tx?: string }[];
+    }[]
+  >([]);
   const watchFromTs = useRef(0);
   const sessionRef = useRef<string | null>(null);
 
@@ -138,43 +146,8 @@ export function useProtectJourney() {
     setHoldings([]);
     setSafeUnplug(false);
     setFillNotice(null);
+    setFillCongratsOpen(false);
   }, [accountIndex, setLedgerAddress]);
-
-  useEffect(() => {
-    if (!watchingFills || !ledgerAddress || fillNotice) return;
-    const owner = ledgerAddress;
-    const tick = async () => {
-      try {
-        const rows = await fetchOwnerReceipts(owner, watchFromTs.current);
-        const hit = rows[0];
-        if (!hit) return;
-        const triggerRaw = String(hit.triggerType);
-        const trigger =
-          triggerRaw === "TAKE_PROFIT" || triggerRaw === "1"
-            ? "Take-profit"
-            : "Stop-loss / buy";
-        setFillNotice({
-          trigger,
-          pyth: usdFrom1e8(hit.pythPrice),
-          fill: usdFrom1e8(hit.executionPrice),
-          when: new Date(Number(hit.timestamp) * 1000).toLocaleString(),
-          tx: hit.txHash.startsWith("0x") ? hit.txHash : `0x${hit.txHash}`,
-          compliant: hit.compliant,
-        });
-        setWatchingFills(false);
-        setStage("outcome");
-        pushLog(
-          "success",
-          `Fill done — ${trigger} @ Pyth ${usdFrom1e8(hit.pythPrice)}.`,
-        );
-      } catch (e) {
-        console.log("[lga] fill watch", e);
-      }
-    };
-    void tick();
-    const id = setInterval(() => void tick(), 12_000);
-    return () => clearInterval(id);
-  }, [watchingFills, ledgerAddress, fillNotice, pushLog, setStage]);
 
   const ethHolding = holdings.find((h) => h.id === "eth");
   const needsGas =
@@ -214,6 +187,37 @@ export function useProtectJourney() {
     const id = setInterval(() => void refreshKeeper(), 20_000);
     return () => clearInterval(id);
   }, [refreshKeeper]);
+
+  const refreshPayments = useCallback(async () => {
+    try {
+      const res = await fetch(`${keeperBase}/payments/recent?limit=8`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const j = (await res.json()) as {
+        payments?: {
+          attemptId: string;
+          paidAt: number;
+          hashscanUrl?: string | null;
+          hcsRef?: string | null;
+          hcsTopicUrl?: string | null;
+          agentId?: string | null;
+          path?: string;
+          executed?: { policyId: string; trigger: string; tx?: string }[];
+        }[];
+      };
+      setHederaPays(j.payments ?? []);
+    } catch {
+      /* keeper down */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (stage !== "monitor" && stage !== "outcome") return;
+    void refreshPayments();
+    const id = setInterval(() => void refreshPayments(), 8_000);
+    return () => clearInterval(id);
+  }, [stage, refreshPayments]);
 
   const loadHoldings = useCallback(async (addr: Address) => {
     setHoldingsLoading(true);
@@ -523,9 +527,15 @@ export function useProtectJourney() {
         setSafeUnplug(true);
         watchFromTs.current = Math.floor(Date.now() / 1000) - 30;
         setFillNotice(null);
+        setFillCongratsOpen(false);
         setWatchingFills(true);
+        protection.startFillWatch(from, watchFromTs.current);
         setStage("monitor");
         pushLog("success", `Policy on-chain — ${result.txHash}`);
+        pushLog(
+          "info",
+          "Watching for fill (Base + Graph) — congrats popup will open when it lands.",
+        );
         void loadHoldings(from);
       } else if (result.status === "rejected") {
         setStage("review");
@@ -643,6 +653,7 @@ export function useProtectJourney() {
       setPaidAttemptMsg(reply);
       setStage("monitor");
       void refreshKeeper();
+      void refreshPayments();
     } catch (e) {
       setPaidAttemptMsg(
         e instanceof Error
@@ -652,15 +663,30 @@ export function useProtectJourney() {
     } finally {
       setPaidAttemptBusy(false);
     }
-  }, [refreshKeeper, setStage]);
+  }, [refreshKeeper, refreshPayments, setStage]);
 
   const startWatching = useCallback(() => {
     watchFromTs.current = Math.floor(Date.now() / 1000) - 30;
     setFillNotice(null);
+    setFillCongratsOpen(false);
     setWatchingFills(true);
     setStage("monitor");
-    pushLog("info", "Watching Receipt Graph for a fill (not a payment).");
-  }, [pushLog, setStage]);
+    if (ledgerAddress) {
+      startFillWatch(ledgerAddress, watchFromTs.current);
+    }
+    pushLog(
+      "info",
+      "Watching for fill (Base + Graph) — congrats popup opens when it lands.",
+    );
+  }, [pushLog, setStage, ledgerAddress, startFillWatch]);
+
+  const dismissFillCongrats = useCallback(() => {
+    setFillCongratsOpen(false);
+  }, []);
+
+  const reopenFillCongrats = useCallback(() => {
+    if (fillNotice) setFillCongratsOpen(true);
+  }, [fillNotice]);
 
   const setStrategy = useCallback(
     (policyType: 0 | 1 | 2 | 3) => {
@@ -713,6 +739,9 @@ export function useProtectJourney() {
     safeUnplug,
     watchingFills,
     fillNotice,
+    fillCongratsOpen,
+    dismissFillCongrats,
+    reopenFillCongrats,
     form,
     setForm,
     limitsAck,
@@ -726,6 +755,8 @@ export function useProtectJourney() {
     keeperBase,
     paidAttemptMsg,
     paidAttemptBusy,
+    hederaPays,
+    refreshPayments,
     oledRows,
     busy,
     chartAsset: chartAssetForToken(form.token),

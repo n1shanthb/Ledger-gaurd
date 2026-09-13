@@ -4,6 +4,8 @@ import { FundGasQr } from "@/components/FundGasQr";
 import { PolicyLevelField } from "@/components/PolicyLevelField";
 import { PolicyPriceChart } from "@/components/PolicyPriceChart";
 import { AgentCompanionRail } from "@/components/protect/AgentCompanionRail";
+import { FillCongratsModal } from "@/components/protect/FillCongratsModal";
+import { JourneyStrategyAgents } from "@/components/protect/JourneyStrategyAgents";
 import { JourneyStepper } from "@/components/protect/JourneyStepper";
 import { LedgerWallet } from "@/components/protect/LedgerWallet";
 import { SystemReadiness } from "@/components/protect/SystemReadiness";
@@ -11,7 +13,10 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, Panel, StatusBanner } from "@/components/ui/Panel";
 import { ACCOUNTS, useProtectJourney } from "@/hooks/useProtectJourney";
 import { BASE_TOKENS } from "@/lib/abi";
+import type { PolicyDraft } from "@/lib/agentEvents";
+import { draftToPolicyForm } from "@/lib/draftToPolicyForm";
 import type { Address } from "viem";
+import { useState } from "react";
 
 const field =
   "mt-1.5 w-full border border-mist bg-ink/40 px-3 py-2.5 text-sm text-paper outline-none focus:border-signal";
@@ -19,6 +24,13 @@ const labelCls = "block text-xs font-medium text-mute";
 
 export function ProtectJourney() {
   const j = useProtectJourney();
+  const [strategyMode, setStrategyMode] = useState<"pick" | "agents">("pick");
+
+  const applyAgentDraft = (draft: PolicyDraft) => {
+    j.setForm(draftToPolicyForm(draft));
+    j.setLimitsAck(false);
+    j.goStage("limits");
+  };
 
   if (j.readOnlyMobile && !j.connected) {
     return (
@@ -43,6 +55,12 @@ export function ProtectJourney() {
 
   return (
     <div className="space-y-10">
+      {j.fillCongratsOpen && j.fillNotice && (
+        <FillCongratsModal
+          notice={j.fillNotice}
+          onClose={j.dismissFillCongrats}
+        />
+      )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <JourneyStepper
           stage={j.stage}
@@ -216,44 +234,101 @@ export function ProtectJourney() {
         <Panel>
           <h2 className="font-display text-xl text-paper">Choose protection</h2>
           <p className="mt-1 text-sm text-mute">
-            What should happen when price crosses your limit?
+            Pick a type yourself, or ask agents to draft one for this journey.
           </p>
-          <ul className="mt-8 divide-y divide-line border-y border-line">
-            {(
-              [
-                { t: 0 as const, title: "Stop loss", body: "Sell if price falls to your floor." },
-                { t: 1 as const, title: "Take profit", body: "Sell if price rises to your target." },
-                { t: 3 as const, title: "Buy dip", body: "Spend USDC when ETH is at or below entry." },
-              ] as const
-            ).map((s) => (
-              <li key={s.t}>
-                <button
-                  type="button"
-                  onClick={() => j.setStrategy(s.t)}
-                  className="flex w-full flex-col gap-1 py-6 text-left transition hover:bg-signal/[0.03] sm:flex-row sm:items-baseline sm:justify-between"
-                >
-                  <span className="font-display text-2xl text-paper">{s.title}</span>
-                  <span className="max-w-sm text-sm text-mute">{s.body}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <details className="mt-6 border-t border-line pt-4">
-            <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.18em] text-mute">
-              Experimental · LP bounds
-            </summary>
-            <p className="mt-2 text-sm text-mute">
-              LP exit behavior is not fully productized yet. Use only if you understand
-              the on-chain band.
-            </p>
-            <Button
-              className="mt-3"
-              variant="ghost"
-              onClick={() => j.setStrategy(2)}
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setStrategyMode("pick")}
+              className={`border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider ${
+                strategyMode === "pick"
+                  ? "border-signal text-signal"
+                  : "border-mist text-mute hover:border-paper hover:text-paper"
+              }`}
             >
-              Use LP bounds
-            </Button>
-          </details>
+              Pick yourself
+            </button>
+            <button
+              type="button"
+              onClick={() => setStrategyMode("agents")}
+              className={`border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider ${
+                strategyMode === "agents"
+                  ? "border-signal text-signal"
+                  : "border-mist text-mute hover:border-paper hover:text-paper"
+              }`}
+            >
+              Customize with agents
+            </button>
+          </div>
+
+          {strategyMode === "pick" && (
+            <>
+              <ul className="mt-8 divide-y divide-line border-y border-line">
+                {(
+                  [
+                    {
+                      t: 0 as const,
+                      title: "Stop loss",
+                      body: "Sell if price falls to your floor.",
+                    },
+                    {
+                      t: 1 as const,
+                      title: "Take profit",
+                      body: "Sell if price rises to your target.",
+                    },
+                    {
+                      t: 3 as const,
+                      title: "Buy dip",
+                      body: "Spend USDC when ETH is at or below entry.",
+                    },
+                  ] as const
+                ).map((s) => (
+                  <li key={s.t}>
+                    <button
+                      type="button"
+                      onClick={() => j.setStrategy(s.t)}
+                      className="flex w-full flex-col gap-1 py-6 text-left transition hover:bg-signal/[0.03] sm:flex-row sm:items-baseline sm:justify-between"
+                    >
+                      <span className="font-display text-2xl text-paper">
+                        {s.title}
+                      </span>
+                      <span className="max-w-sm text-sm text-mute">{s.body}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <details className="mt-6 border-t border-line pt-4">
+                <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.18em] text-mute">
+                  Experimental · LP bounds
+                </summary>
+                <p className="mt-2 text-sm text-mute">
+                  LP exit behavior is not fully productized yet. Use only if you
+                  understand the on-chain band.
+                </p>
+                <Button
+                  className="mt-3"
+                  variant="ghost"
+                  onClick={() => j.setStrategy(2)}
+                >
+                  Use LP bounds
+                </Button>
+              </details>
+            </>
+          )}
+
+          {strategyMode === "agents" && (
+            <div className="mt-6">
+              <JourneyStrategyAgents onApplyDraft={applyAgentDraft} />
+              <button
+                type="button"
+                className="mt-4 font-mono text-[10px] uppercase tracking-wider text-mute hover:text-paper"
+                onClick={() => setStrategyMode("pick")}
+              >
+                ← Back to pick yourself
+              </button>
+            </div>
+          )}
         </Panel>
       )}
 
@@ -457,19 +532,44 @@ export function ProtectJourney() {
       )}
 
       {j.stage === "signing" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/95 p-6">
-          <div className="max-w-md text-center">
-            <p className="font-mono text-xs uppercase tracking-[0.28em] text-signal">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/95 p-4 sm:p-6">
+          <div className="w-full max-w-lg border border-signal/40 bg-ink px-5 py-6 sm:px-7">
+            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-signal">
               Confirm on device
             </p>
-            <h2 className="mt-4 font-display text-4xl tracking-tight text-paper">
+            <h2 className="mt-3 font-display text-3xl tracking-tight text-paper sm:text-4xl">
               Waiting on Ledger
             </h2>
-            <p className="mt-4 text-sm leading-relaxed text-mute">
-              Scroll the OLED preview, then approve. Reject to return to review.
+            <p className="mt-2 text-sm text-mute">
+              Live mirror of what we ask the hardware to sign. OLED is source of
+              truth — reject anytime to abort.
             </p>
-            <p className="mt-8 font-mono text-xs text-mute" aria-live="polite">
-              {j.phase === "signing" ? "Signing…" : "Finishing…"}
+            <p
+              className="mt-5 border border-line bg-signal/10 px-3 py-3 text-sm text-paper"
+              aria-live="polite"
+            >
+              {j.logs[0]?.message ??
+                (j.phase === "signing" ? "Preparing next Ledger step…" : "Finishing…")}
+            </p>
+            <ul className="mt-4 max-h-48 space-y-2 overflow-y-auto border-t border-line pt-4 font-mono text-[11px] text-mute">
+              {j.logs.slice(0, 12).map((l) => (
+                <li
+                  key={l.id}
+                  className={
+                    l.level === "success"
+                      ? "text-signal"
+                      : l.level === "error" || l.level === "warn"
+                        ? "text-warn"
+                        : ""
+                  }
+                >
+                  {l.message}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-wider text-mute">
+              Typical steps: wrap ETH→WETH · allow token · policy summary ·
+              setGuardianPolicy
             </p>
           </div>
         </div>
@@ -479,8 +579,9 @@ export function ProtectJourney() {
         <div className="space-y-4">
           {j.safeUnplug && (
             <StatusBanner tone="success" title="Safe to disconnect Ledger">
-              Policy is on-chain. Keeper can evaluate without USB. We watch Receipt Graph
-              for a fill — payments alone are not fills.
+              Policy is on-chain. Autopilot loads live policies from Receipt Graph
+              and watches bands without USB. x402 payment alone is not a fill —
+              Activity shows indexed execution receipts when one lands.
             </StatusBanner>
           )}
           <Panel>
@@ -491,8 +592,18 @@ export function ProtectJourney() {
             </p>
             {j.watchingFills && !j.fillNotice && (
               <p className="mt-3 font-mono text-xs text-warn">
-                Watching for indexed fill…
+                Watching for indexed fill… leave this tab open — a congrats
+                popup opens when it lands (may take seconds to a few minutes).
               </p>
+            )}
+            {j.fillNotice && !j.fillCongratsOpen && (
+              <button
+                type="button"
+                className="mt-3 font-mono text-xs text-signal underline"
+                onClick={j.reopenFillCongrats}
+              >
+                Show fill congratulations again
+              </button>
             )}
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="secondary" onClick={j.startWatching}>
@@ -513,6 +624,87 @@ export function ProtectJourney() {
                 {j.paidAttemptMsg}
               </pre>
             )}
+
+            <div className="mt-8 border border-signal/30 bg-signal/5 px-4 py-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-signal">
+                Hedera x402 · HBAR payment
+              </p>
+              <p className="mt-2 text-sm text-mute">
+                Autopilot pays the keeper trigger in HBAR (x402). Open HashScan
+                for the partner shoutout — payment alone is not a fill.
+              </p>
+              {j.hederaPays.length === 0 ? (
+                <p className="mt-3 font-mono text-xs text-mute">
+                  No paid attempts yet — run Autopilot or “Run paid attempt”.
+                </p>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {j.hederaPays.slice(0, 5).map((p) => (
+                    <li
+                      key={p.attemptId}
+                      className="border-t border-line/80 pt-3 text-sm"
+                    >
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span className="font-mono text-[10px] uppercase text-mute">
+                          {p.agentId ?? "pay"} · {p.path ?? "trigger"} ·{" "}
+                          {new Date(p.paidAt).toLocaleTimeString()}
+                        </span>
+                        {p.executed && p.executed.length > 0 ? (
+                          <span className="text-signal">
+                            fill linked · {p.executed.length}
+                          </span>
+                        ) : (
+                          <span className="text-mute">pay only</span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-3 font-mono text-[11px]">
+                        {p.hashscanUrl && (
+                          <a
+                            href={p.hashscanUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-signal underline"
+                          >
+                            HashScan HBAR tx →
+                          </a>
+                        )}
+                        {p.hcsTopicUrl && (
+                          <a
+                            href={p.hcsTopicUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-mute underline hover:text-paper"
+                          >
+                            HCS topic →
+                          </a>
+                        )}
+                        {p.hcsRef && (
+                          <span className="text-mute">{p.hcsRef}</span>
+                        )}
+                      </div>
+                      {p.executed?.[0]?.tx && (
+                        <a
+                          href={`https://basescan.org/tx/${p.executed[0].tx}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block font-mono text-[11px] text-accent underline"
+                        >
+                          Base fill {p.executed[0].tx.slice(0, 12)}… →
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button
+                type="button"
+                className="mt-3 font-mono text-[10px] uppercase tracking-wider text-mute hover:text-paper"
+                onClick={() => void j.refreshPayments()}
+              >
+                Refresh Hedera payments
+              </button>
+            </div>
+
             <details className="mt-4 text-xs text-mute">
               <summary className="cursor-pointer">Technical details</summary>
               <p className="mt-2 font-mono">

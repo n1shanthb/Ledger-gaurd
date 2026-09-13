@@ -100,6 +100,7 @@ export async function signTransactionOnLedger(
   tx: TransactionSerializableEIP1559,
   onLog: (entry: Omit<LogEntry, "id" | "ts">) => void,
   accountIndex: number,
+  stepLabel = "transaction",
 ): Promise<Signature | "rejected"> {
   const signerEth = buildSignerEth(sessionId);
   const serialized = serializeTransaction(tx);
@@ -121,7 +122,7 @@ export async function signTransactionOnLedger(
               lastInteraction = interaction;
               onLog({
                 level: "info",
-                message: `Ledger waiting — ${interaction}. Review on device.`,
+                message: `On Ledger now: ${stepLabel} — ${interaction}. Scroll OLED & approve.`,
               });
             }
             break;
@@ -129,7 +130,7 @@ export async function signTransactionOnLedger(
           case DeviceActionStatus.Completed: {
             onLog({
               level: "success",
-              message: "Tx approved on Ledger — broadcasting to Base…",
+              message: `Approved on Ledger: ${stepLabel} — broadcasting to Base…`,
             });
             sub.unsubscribe();
             resolve({
@@ -140,7 +141,10 @@ export async function signTransactionOnLedger(
             break;
           }
           case DeviceActionStatus.Stopped:
-            onLog({ level: "warn", message: "Tx rejected on Ledger." });
+            onLog({
+              level: "warn",
+              message: `Rejected on Ledger: ${stepLabel}`,
+            });
             sub.unsubscribe();
             resolve("rejected");
             break;
@@ -175,6 +179,7 @@ async function signSendRaw(
   value: bigint,
   onLog: (entry: Omit<LogEntry, "id" | "ts">) => void,
   accountIndex: number,
+  stepLabel: string,
 ): Promise<PolicySignResult> {
   const client = getPublicClient();
   const [nonce, fees] = await Promise.all([
@@ -193,7 +198,13 @@ async function signSendRaw(
     maxFeePerGas: fees.maxFeePerGas!,
     maxPriorityFeePerGas: fees.maxPriorityFeePerGas!,
   };
-  const signature = await signTransactionOnLedger(sessionId, tx, onLog, accountIndex);
+  const signature = await signTransactionOnLedger(
+    sessionId,
+    tx,
+    onLog,
+    accountIndex,
+    stepLabel,
+  );
   if (signature === "rejected") return { status: "rejected" };
   const signedTx = serializeTransaction(tx, signature);
   try {
@@ -248,14 +259,24 @@ async function ensureUsdcForBuy(
   if (allowance < need) {
     onLog({
       level: "info",
-      message: "Auto-approve GPM to pull USDC for the buy…",
+      message:
+        "Next on Ledger: allow Guardian to pull USDC (ERC-20 approve). This is not the buy yet — only permission for buy-dip spend.",
     });
     const data = encodeFunctionData({
       abi: ERC20_ABI,
       functionName: "approve",
       args: [gpm, maxUint256],
     });
-    const appr = await signSendRaw(sessionId, from, usdc, data, 0n, onLog, accountIndex);
+    const appr = await signSendRaw(
+      sessionId,
+      from,
+      usdc,
+      data,
+      0n,
+      onLog,
+      accountIndex,
+      "allow USDC spend for buy-dip",
+    );
     if (appr.status !== "success") return appr;
   }
   return null;
@@ -291,7 +312,7 @@ async function ensureWethForPolicy(
     }
     onLog({
       level: "info",
-      message: `Auto-wrap ${formatEther(shortfall)} ETH → WETH (shows as WETH in Ledger Live until fill)…`,
+      message: `Next on Ledger: wrap ${formatEther(shortfall)} ETH → WETH (WETH.deposit). Not the policy — converts gas ETH into the protected asset.`,
     });
     const data = encodeFunctionData({ abi: ERC20_ABI, functionName: "deposit" });
     const wrap = await signSendRaw(
@@ -302,6 +323,7 @@ async function ensureWethForPolicy(
       shortfall,
       onLog,
       accountIndex,
+      "wrap ETH → WETH",
     );
     if (wrap.status !== "success") return wrap;
   }
@@ -315,14 +337,24 @@ async function ensureWethForPolicy(
   if (allowance < need) {
     onLog({
       level: "info",
-      message: "Auto-approve GPM to pull WETH for the exit…",
+      message:
+        "Next on Ledger: allow Guardian to pull WETH (ERC-20 approve). Permission for stop/take exit swap — not the swap itself.",
     });
     const data = encodeFunctionData({
       abi: ERC20_ABI,
       functionName: "approve",
       args: [gpm, maxUint256],
     });
-    const appr = await signSendRaw(sessionId, from, weth, data, 0n, onLog, accountIndex);
+    const appr = await signSendRaw(
+      sessionId,
+      from,
+      weth,
+      data,
+      0n,
+      onLog,
+      accountIndex,
+      "allow WETH for exit swap",
+    );
     if (appr.status !== "success") return appr;
   }
 
@@ -420,7 +452,8 @@ export async function signAndSendSetGuardianPolicy(
   });
   onLog({
     level: "info",
-    message: "OLED policy review (scroll device to read details)…",
+    message:
+      "Next on Ledger: policy summary (message sign). Scroll OLED — same numbers as the review panel. Approve to continue to the real tx.",
   });
   const reviewed = await signMessageOnLedger(sessionId, review, onLog, accountIndex);
   if (reviewed.status === "rejected") return { status: "rejected" };
@@ -463,7 +496,9 @@ export async function signAndSendSetGuardianPolicy(
 
   onLog({
     level: "info",
-    message: "Clear-sign setGuardianPolicy tx on OLED…",
+    message: buy
+      ? "Next on Ledger: setGuardianPolicy — clear-sign buy-dip protection on Base."
+      : "Next on Ledger: setGuardianPolicy — clear-sign stop/take protection on Base.",
   });
 
   const result = await signSendRaw(
@@ -474,6 +509,7 @@ export async function signAndSendSetGuardianPolicy(
     0n,
     onLog,
     accountIndex,
+    buy ? "setGuardianPolicy (buy-dip)" : "setGuardianPolicy (protect)",
   );
   if (result.status === "success") {
     onLog({

@@ -207,13 +207,16 @@ export function signMessageOnLedger(
               lastInteraction = interaction;
               onLog({
                 level: "info",
-                message: `OLED review — ${interaction}. Scroll & approve on device.`,
+                message: `On Ledger now: policy summary (message sign) — ${interaction}. Same bands as the review panel.`,
               });
             }
             break;
           }
           case DeviceActionStatus.Completed:
-            onLog({ level: "success", message: "OLED review approved." });
+            onLog({
+              level: "success",
+              message: "Approved on Ledger: policy summary — continue to next tx.",
+            });
             sub.unsubscribe();
             resolve({ status: "approved" });
             break;
