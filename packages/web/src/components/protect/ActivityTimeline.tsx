@@ -8,8 +8,10 @@ import { EmptyState } from "@/components/ui/Panel";
 import { Badge } from "@/components/ui/Badge";
 import {
   EXPLORER_URL,
+  HCS_TOPIC_URL,
   STUDIO_URL,
   SUBGRAPH_QUERY_URL,
+  hcsMessageUrl,
   tokenLabel,
   usdFrom1e8,
 } from "@/lib/constants";
@@ -21,7 +23,12 @@ import {
   fetchStudioMeta,
   type OnchainPolicyCreated,
 } from "@/lib/onchainActivity";
-import type { KillRow, PolicyRow, ReceiptRow } from "@/lib/subgraph";
+import type {
+  KillRow,
+  PaymentAuditRow,
+  PolicyRow,
+  ReceiptRow,
+} from "@/lib/subgraph";
 
 function policyTypeLabel(t: string | number): string {
   const s = String(t);
@@ -68,10 +75,63 @@ function bpsPct(bps: string | undefined): string {
 }
 
 type Item =
-  | { kind: "fill"; id: string; ts: number; receipt: ReceiptRow }
+  | { kind: "fill"; id: string; ts: number; receipt: ReceiptRow; hcsRef?: string }
   | { kind: "kill"; id: string; ts: number; kill: KillRow }
   | { kind: "policy"; id: string; ts: number; policy: PolicyRow }
-  | { kind: "pending"; id: string; ts: number; onchain: OnchainPolicyCreated };
+  | { kind: "pending"; id: string; ts: number; onchain: OnchainPolicyCreated }
+  | {
+      kind: "x402";
+      id: string;
+      ts: number;
+      hcsRef: string;
+      hashscanUrl?: string | null;
+      hederaPaymentRef?: string;
+      policyId?: string;
+      attemptId?: string;
+    };
+
+type KeeperPay = {
+  attemptId: string;
+  paidAt: number;
+  hashscanUrl?: string | null;
+  hcsRef?: string | null;
+  hcsTopicUrl?: string | null;
+  agentId?: string | null;
+  path?: string;
+};
+
+const keeperBase =
+  process.env.NEXT_PUBLIC_KEEPER_URL?.replace(/\/$/, "") ??
+  "http://127.0.0.1:3001";
+
+function normHex(v: string | undefined | null): string {
+  return (v ?? "").toLowerCase().replace(/^0x/, "");
+}
+
+function HcsLink({
+  hcsRef,
+  className,
+}: {
+  hcsRef?: string | null;
+  className?: string;
+}) {
+  const href = hcsMessageUrl(hcsRef) ?? HCS_TOPIC_URL;
+  const label = hcsRef?.startsWith("hcs://") ? hcsRef : "HCS topic →";
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className={
+        className ??
+        "font-mono text-[10px] uppercase tracking-wider text-signal hover:underline"
+      }
+    >
+      {label}
+    </a>
+  );
+}
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -104,12 +164,14 @@ function ActivityDetail({
   let title = "Activity";
   let body: ReactNode = null;
   let evidenceHref: string | null = null;
+  let detailHcs: string | undefined;
 
   if (item.kind === "fill") {
     const r = item.receipt;
     const p = r.policy;
     title = "Verified fill";
     evidenceHref = `https://basescan.org/tx/${r.txHash}`;
+    detailHcs = item.hcsRef;
     body = (
       <>
         <section>
@@ -180,6 +242,25 @@ function ActivityDetail({
           </dl>
         </section>
       </>
+    );
+  } else if (item.kind === "x402") {
+    title = "x402 / HCS payment";
+    evidenceHref = item.hashscanUrl || hcsMessageUrl(item.hcsRef);
+    detailHcs = item.hcsRef;
+    body = (
+      <dl>
+        <DetailRow label="HCS ref" value={item.hcsRef || "—"} />
+        <DetailRow label="Hedera pay" value={item.hederaPaymentRef || "—"} />
+        <DetailRow
+          label="Attempt"
+          value={item.attemptId ? shortId(item.attemptId) : "—"}
+        />
+        <DetailRow
+          label="Policy"
+          value={item.policyId ? shortId(item.policyId) : "—"}
+        />
+        <DetailRow label="When" value={formatTs(item.ts)} />
+      </dl>
     );
   } else if (item.kind === "policy") {
     const p = item.policy;
@@ -265,6 +346,20 @@ function ActivityDetail({
           {title}
         </h2>
         <div className="mt-6">{body}</div>
+        <div className="mt-6 border-t border-line pt-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-signal">
+            Hedera HCS
+          </p>
+          <p className="mt-2 text-sm text-mute">
+            x402 payment memos on the LGA HCS topic — HashScan audit trail.
+          </p>
+          <div className="mt-3">
+            <HcsLink
+              hcsRef={detailHcs}
+              className="text-sm text-signal hover:underline"
+            />
+          </div>
+        </div>
         <div className="mt-8 flex flex-wrap gap-3">
           {evidenceHref && (
             <a
@@ -273,9 +368,17 @@ function ActivityDetail({
               rel="noreferrer"
               className="inline-flex min-h-11 items-center justify-center rounded-full border border-mist px-5 text-sm font-semibold text-paper hover:border-paper"
             >
-              Basescan →
+              Evidence →
             </a>
           )}
+          <a
+            href={hcsMessageUrl(detailHcs) ?? HCS_TOPIC_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-signal/40 px-5 text-sm font-semibold text-signal hover:border-signal"
+          >
+            HCS topic →
+          </a>
           {item.kind === "fill" && onReplayCongrats && (
             <Button
               variant="ghost"
@@ -300,11 +403,13 @@ export function ActivityTimeline({
   receipts,
   kills,
   policies,
+  paymentAudits = [],
   error,
 }: {
   receipts: ReceiptRow[];
   kills: KillRow[];
   policies: PolicyRow[];
+  paymentAudits?: PaymentAuditRow[];
   error: string | null;
 }) {
   const { ownerFilter, lastPolicyTx, showFillCongrats } = useProtection();
@@ -315,6 +420,7 @@ export function ActivityTimeline({
   const [open, setOpen] = useState<Item | null>(null);
   const [replayBusy, setReplayBusy] = useState(false);
   const [replayErr, setReplayErr] = useState<string | null>(null);
+  const [keeperPays, setKeeperPays] = useState<KeeperPay[]>([]);
 
   useEffect(() => {
     let dead = false;
@@ -383,6 +489,28 @@ export function ActivityTimeline({
     };
   }, [ownerFilter, policies]);
 
+  useEffect(() => {
+    let dead = false;
+    const tick = async () => {
+      try {
+        const res = await fetch(`${keeperBase}/payments/recent?limit=20`, {
+          cache: "no-store",
+        });
+        if (!res.ok || dead) return;
+        const j = (await res.json()) as { payments?: KeeperPay[] };
+        if (!dead) setKeeperPays(j.payments ?? []);
+      } catch {
+        /* keeper optional for Activity */
+      }
+    };
+    void tick();
+    const id = setInterval(() => void tick(), 20_000);
+    return () => {
+      dead = true;
+      clearInterval(id);
+    };
+  }, []);
+
   const indexedIds = useMemo(
     () => new Set(policies.map((p) => p.id.toLowerCase())),
     [policies],
@@ -396,6 +524,17 @@ export function ActivityTimeline({
 
   const lag =
     studioBlock != null && baseTip != null ? baseTip - studioBlock : null;
+
+  const hcsByPolicy = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of paymentAudits) {
+      const pid = normHex(a.policyId);
+      if (pid && a.hcsRef?.startsWith("hcs://") && !map.has(pid)) {
+        map.set(pid, a.hcsRef);
+      }
+    }
+    return map;
+  }, [paymentAudits]);
 
   const items = useMemo(() => {
     const own = (owner: string) =>
@@ -418,6 +557,33 @@ export function ActivityTimeline({
         id: r.id,
         ts: Number(r.timestamp) * 1000,
         receipt: r,
+        hcsRef: hcsByPolicy.get(normHex(r.policy?.id)),
+      });
+    }
+    for (const a of paymentAudits) {
+      list.push({
+        kind: "x402",
+        id: `audit-${a.id}`,
+        ts: Number(a.timestamp) * 1000,
+        hcsRef: a.hcsRef,
+        hederaPaymentRef: a.hederaPaymentRef,
+        policyId: a.policyId,
+        attemptId: a.attemptId,
+      });
+    }
+    const seenHcs = new Set(
+      paymentAudits.map((a) => a.hcsRef).filter(Boolean),
+    );
+    for (const p of keeperPays) {
+      if (!p.hcsRef || seenHcs.has(p.hcsRef)) continue;
+      seenHcs.add(p.hcsRef);
+      list.push({
+        kind: "x402",
+        id: `pay-${p.attemptId}`,
+        ts: p.paidAt,
+        hcsRef: p.hcsRef,
+        hashscanUrl: p.hashscanUrl,
+        attemptId: p.attemptId,
       });
     }
     for (const k of kills) {
@@ -443,7 +609,16 @@ export function ActivityTimeline({
       if (b.kind === "pending" && a.kind !== "pending") return 1;
       return b.ts - a.ts;
     });
-  }, [receipts, kills, policies, ownerFilter, pending]);
+  }, [
+    receipts,
+    kills,
+    policies,
+    paymentAudits,
+    keeperPays,
+    ownerFilter,
+    pending,
+    hcsByPolicy,
+  ]);
 
   async function replayLastFill() {
     setReplayErr(null);
@@ -533,6 +708,14 @@ export function ActivityTimeline({
               </a>
             )}
             <a
+              href={HCS_TOPIC_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-signal hover:underline"
+            >
+              HCS topic →
+            </a>
+            <a
               href={EXPLORER_URL}
               target="_blank"
               rel="noreferrer"
@@ -596,6 +779,9 @@ export function ActivityTimeline({
                     <p className="mt-2 font-mono text-xs text-mute">
                       Open for details · {item.onchain.txHash.slice(0, 12)}…
                     </p>
+                    <p className="mt-2">
+                      <HcsLink />
+                    </p>
                   </>
                 )}
                 {item.kind === "fill" && (
@@ -624,8 +810,30 @@ export function ActivityTimeline({
                       · Pyth {usdFrom1e8(item.receipt.pythPrice)} · fill{" "}
                       {usdFrom1e8(item.receipt.executionPrice)}
                     </p>
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-mute">
-                      Open detail →
+                    <p className="mt-2">
+                      <HcsLink hcsRef={item.hcsRef} />
+                    </p>
+                  </>
+                )}
+                {item.kind === "x402" && (
+                  <>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <div className="flex flex-wrap items-baseline gap-3">
+                        <Badge tone="success">x402</Badge>
+                        <span className="text-paper">Hedera payment memo</span>
+                      </div>
+                      <span className="font-mono text-[11px] text-mute">
+                        {formatTs(item.ts)}
+                      </span>
+                    </div>
+                    <p className="mt-2 font-mono text-xs text-mute">
+                      {item.hcsRef}
+                      {item.hederaPaymentRef
+                        ? ` · ${item.hederaPaymentRef.slice(0, 28)}…`
+                        : ""}
+                    </p>
+                    <p className="mt-2">
+                      <HcsLink hcsRef={item.hcsRef} />
                     </p>
                   </>
                 )}
@@ -642,8 +850,8 @@ export function ActivityTimeline({
                         {formatTs(item.ts)}
                       </span>
                     </div>
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-mute">
-                      Open detail →
+                    <p className="mt-2">
+                      <HcsLink />
                     </p>
                   </>
                 )}
@@ -673,8 +881,8 @@ export function ActivityTimeline({
                         ? ` · take ${usdFrom1e8(item.policy.takeProfitPrice)}`
                         : ""}
                     </p>
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-mute">
-                      Open detail →
+                    <p className="mt-2">
+                      <HcsLink />
                     </p>
                   </>
                 )}

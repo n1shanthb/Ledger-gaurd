@@ -18,6 +18,21 @@ export const STUDIO_URL =
 export const EXPLORER_URL =
   "https://thegraph.com/explorer/subgraphs/GfvNLa3ym7X6bNDNm6oyqvHGgW2anbzTKhEo7cFPjhvz?view=Query&chain=arbitrum-one";
 
+/** Hedera HCS payment-audit topic (testnet demo). */
+export const HCS_TOPIC_ID =
+  process.env.NEXT_PUBLIC_HCS_TOPIC_ID?.trim() || "0.0.10423816";
+export const HCS_NETWORK =
+  process.env.NEXT_PUBLIC_HEDERA_NETWORK?.trim() === "mainnet"
+    ? "mainnet"
+    : "testnet";
+export const HCS_TOPIC_URL = `https://hashscan.io/${HCS_NETWORK}/topic/${HCS_TOPIC_ID}`;
+
+export function hcsMessageUrl(hcsRef: string | null | undefined): string | null {
+  if (!hcsRef?.startsWith("hcs://")) return HCS_TOPIC_URL;
+  const parts = hcsRef.replace("hcs://", "").split("/");
+  const topic = parts[0] || HCS_TOPIC_ID;
+  return `https://hashscan.io/${HCS_NETWORK}/topic/${topic}`;
+}
 /** Auth header for Gateway / Studio queries (client may use NEXT_PUBLIC_). */
 export function subgraphAuthHeaders(): Record<string, string> {
   const key =

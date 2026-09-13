@@ -11,12 +11,16 @@ export default async function ProtectActivityPage() {
     [];
   let kills: Awaited<ReturnType<typeof fetchConsoleData>>["killSwitches"] = [];
   let policies: Awaited<ReturnType<typeof fetchConsoleData>>["policies"] = [];
+  let paymentAudits: Awaited<
+    ReturnType<typeof fetchConsoleData>
+  >["paymentAudits"] = [];
 
   try {
     const data = await fetchConsoleData();
     receipts = data.executionReceipts;
     kills = data.killSwitches;
     policies = data.policies;
+    paymentAudits = data.paymentAudits ?? [];
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // Don't blank the page — on-chain pending rows still work in the timeline
@@ -30,12 +34,13 @@ export default async function ProtectActivityPage() {
       <AppShell
         eyebrow="Activity"
         title="Activity"
-        subtitle="Indexed fills, kills, and policy changes from Receipt Graph — plus on-chain pending while the indexer catches up. x402 payments without a fill stay in Agent room."
+        subtitle="Indexed fills, kills, policies, and Hedera x402/HCS payment memos — plus on-chain pending while the indexer catches up."
       >
         <ActivityTimeline
           receipts={receipts}
           kills={kills}
           policies={policies}
+          paymentAudits={paymentAudits}
           error={error}
         />
       </AppShell>

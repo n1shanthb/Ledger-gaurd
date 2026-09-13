@@ -46,6 +46,17 @@ export type KillRow = {
   timestamp: string;
 };
 
+export type PaymentAuditRow = {
+  id: string;
+  attemptId: string;
+  policyId: string;
+  baseTx: string;
+  hederaPaymentRef: string;
+  hcsRef: string;
+  timestamp: string;
+  txHash: string;
+};
+
 async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   const payload = JSON.stringify({ query, variables });
   // Browser → Next proxy (server holds Gateway key). SSR → Gateway direct.
@@ -105,6 +116,7 @@ export async function fetchConsoleData() {
     policies: PolicyRow[];
     executionReceipts: ReceiptRow[];
     killSwitches: KillRow[];
+    paymentAudits: PaymentAuditRow[];
   }>(`
     {
       policies(first: 20, orderBy: createdAt, orderDirection: desc) {
@@ -115,6 +127,9 @@ export async function fetchConsoleData() {
       }
       killSwitches(first: 10, orderBy: timestamp, orderDirection: desc) {
         id owner policiesRevoked timestamp
+      }
+      paymentAudits(first: 20, orderBy: timestamp, orderDirection: desc) {
+        id attemptId policyId baseTx hederaPaymentRef hcsRef timestamp txHash
       }
     }
   `);
