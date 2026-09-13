@@ -205,7 +205,7 @@ export function PoliciesExplorer() {
               body={
                 scope === "mine"
                   ? "Connect on Protect and clear-sign a policy. Indexing may lag a minute after Base confirms."
-                  : "Try Active or All, or refresh Studio."
+                  : "Try Active or All, or refresh the Receipt Graph query."
               }
               action={
                 <Link

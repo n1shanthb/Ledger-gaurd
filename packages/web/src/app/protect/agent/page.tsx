@@ -10,7 +10,7 @@ export default function ProtectAgentPage() {
       <AppShell
         eyebrow="Agent"
         title="Agent room"
-        subtitle="Conversational ops around the protection spine. AI specialists draft and explain; Payer, Autopilot, and Driver are deterministic workers."
+        subtitle="Six roles: Composer, Clerk, Solver (AI) plus Payer, Autopilot, Driver (code). Clerk queries Receipt Graph; Solver uses Messari compose; Payer settles Hedera x402 — LLMs never hold the session key."
       >
         <KeeperAgentPanel />
       </AppShell>

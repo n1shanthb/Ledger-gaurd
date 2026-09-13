@@ -58,7 +58,7 @@ export function SystemReadiness({
       id: "graph",
       label: "Receipt Graph",
       ok: null,
-      action: "Indexes after Base confirm",
+      action: "Live policies · fills · audits",
     });
 
     setRows(next);

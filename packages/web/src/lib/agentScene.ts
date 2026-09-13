@@ -49,12 +49,12 @@ const ROLE: Record<
   },
   clerk: {
     title: "Clerk",
-    role: "Status",
+    role: "Receipt Graph",
     accent: "graph",
   },
   solver: {
     title: "Market Solver",
-    role: "Risk",
+    role: "Messari · risk",
     accent: "oracle",
   },
   payer: {
@@ -64,20 +64,20 @@ const ROLE: Record<
   },
   autopilot: {
     title: "Autopilot",
-    role: "Watch",
+    role: "Graph · watch",
     accent: "autopilot",
   },
   driver: {
     title: "Driver",
-    role: "Fill",
+    role: "Base fill",
     accent: "driver",
   },
 };
 
 const IDLE_BADGE: Record<AgentId, string> = {
   composer: "AWAITING PIPELINE",
-  clerk: "STANDBY · POLICIES",
-  solver: "STANDBY · RISK",
+  clerk: "STANDBY · RECEIPT GRAPH",
+  solver: "STANDBY · MESSARI",
   payer: "STANDBY · x402",
   autopilot: "STANDBY · PAY-ON-HIT",
   driver: "STANDBY · BASE FILL",
@@ -237,20 +237,20 @@ export function deriveScene(graph: GraphState): AgentScene {
   const externals: SceneExternal[] = [
     {
       id: "graph",
-      label: "The Graph Studio",
-      caption: "LGA Receipt Graph",
+      label: "The Graph",
+      caption: "Receipt Graph · policies & audits",
       live: externalLive.has("graph"),
     },
     {
       id: "messari",
       label: "Messari Gateway",
-      caption: "Standard DEX / Lending",
+      caption: "Lending / DEX standards",
       live: externalLive.has("messari"),
     },
     {
       id: "hedera",
-      label: "Hedera HCS",
-      caption: "x402 execution",
+      label: "Hedera",
+      caption: "x402 pay · HCS audit",
       live: externalLive.has("hedera"),
     },
     {

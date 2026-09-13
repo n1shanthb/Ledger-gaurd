@@ -35,8 +35,8 @@ export function ComposeProof() {
         <p className="mt-2 text-sm text-mute">
           Compose Messari fan-out paused (
           <code className="text-paper">NEXT_PUBLIC_GRAPH_COMPOSE=0</code>) —
-          saves query quota while recording. Receipt Graph still serves Activity
-          + Agent.
+          saves Gateway quota while recording. Receipt Graph still serves
+          Activity, Protections, and Agent Clerk.
         </p>
       </section>
     );
@@ -48,7 +48,8 @@ export function ComposeProof() {
         Live Gateway
       </p>
       <p className="mt-1 text-sm text-mute">
-        Standards leverage for Composable — same decide API as the keeper agent.
+        One Messari document → many lending/DEX deployments on Gateway, composed
+        with Receipt Graph context — same decide API the keeper Solver uses.
       </p>
 
       {missingKey && (

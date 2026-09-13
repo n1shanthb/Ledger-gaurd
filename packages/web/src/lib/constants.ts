@@ -7,7 +7,7 @@ export const SESSION_VALIDATOR =
 export const SWAP_EXECUTOR =
   "0x4767a9Deee297d73B72cDD850850D11B221034Ab" as const;
 
-/** Decentralized network Receipt Graph (Bearer via GRAPH_API_KEY). */
+/** Receipt Graph query URL (Gateway preferred; Bearer via GRAPH_API_KEY). */
 export const SUBGRAPH_QUERY_URL =
   process.env.NEXT_PUBLIC_SUBGRAPH_QUERY_URL ??
   "https://gateway.thegraph.com/api/subgraphs/id/GfvNLa3ym7X6bNDNm6oyqvHGgW2anbzTKhEo7cFPjhvz";

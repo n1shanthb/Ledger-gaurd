@@ -25,7 +25,7 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "LGA — Ledger Guardian Agent",
   description:
-    "Hardware-bounded delegation for autonomous DeFi exits. Ledger clear-sign, Receipt Graph, x402 keeper, Key Ring secrets.",
+    "Hardware-bounded DeFi exits: Ledger clear-sign, six-role keeper, Hedera x402, Key Ring secrets. The Graph powers live policies, Messari risk gates, fills, kills, and payment audits.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

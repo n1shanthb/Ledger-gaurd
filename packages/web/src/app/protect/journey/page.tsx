@@ -10,7 +10,7 @@ export default function ProtectJourneyPage() {
       <AppShell
         eyebrow="Protect"
         title="Clear-sign"
-        subtitle="Guided journey from device to Receipt Graph. Master key never leaves Ledger."
+        subtitle="Clear-sign on Ledger OLED, then unplug. The keeper loads live policies from Receipt Graph, pays x402 to attempt, and indexes outcomes you can audit."
       >
         <LedgerConsoleGate />
       </AppShell>

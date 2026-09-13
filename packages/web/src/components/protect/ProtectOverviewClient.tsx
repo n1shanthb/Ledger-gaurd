@@ -20,11 +20,11 @@ export function ProtectOverviewClient() {
       {lastPolicyTx && (
         <div className="border-l-2 border-warn/60 pl-4" role="status">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-warn">
-            Pending Receipt Graph
+            Pending Graph index
           </p>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
-            Clear-sign landed on Base. Studio can lag behind the tip — the policy
-            may not appear as active until the subgraph catches up. Check Basescan
+            Clear-sign landed on Base. Receipt Graph can lag the tip — the policy
+            may not show as active until indexing catches up. Check Basescan
             meanwhile.
           </p>
           <a

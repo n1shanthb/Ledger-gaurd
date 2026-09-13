@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { SiteFooter } from "@/components/SiteFooter";
 import { EmptyState } from "@/components/ui/Panel";
-import { STUDIO_URL, tokenLabel, usdFrom1e8 } from "@/lib/constants";
+import { EXPLORER_URL, STUDIO_URL, tokenLabel, usdFrom1e8 } from "@/lib/constants";
 import { fetchConsoleData } from "@/lib/subgraph";
 import { ProtectOverviewClient } from "@/components/protect/ProtectOverviewClient";
 
@@ -40,13 +40,14 @@ export default async function ProtectOverviewPage() {
       <AppShell
         eyebrow="Overview"
         title="Your protection status"
-        subtitle="One guided journey: connect Ledger, clear-sign a protection, let the keeper watch, verify the fill in Receipt Graph."
+        subtitle="Connect Ledger, clear-sign a protection, let Autopilot watch Receipt Graph + Pyth, then verify fills, kills, and audits in Activity — Graph is how the keeper knows what is live."
       >
         <ProtectOverviewClient />
 
         {error && (
           <p className="mt-8 border-l-2 border-kill/50 pl-4 text-sm text-kill">
-            Receipt Graph query failed — {error}. Activity may lag until Studio responds.
+            Receipt Graph query failed — {error}. Activity may lag until the
+            indexer catches Base; Basescan still shows your clear-sign.
           </p>
         )}
 
@@ -143,14 +144,24 @@ export default async function ProtectOverviewPage() {
                 </li>
               )}
             </ul>
-            <a
-              href={STUDIO_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-6 inline-block font-mono text-[11px] text-mute hover:text-signal"
-            >
-              Studio →
-            </a>
+            <div className="mt-6 flex flex-wrap gap-4 font-mono text-[11px] text-mute">
+              <a
+                href={EXPLORER_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-signal"
+              >
+                Explorer →
+              </a>
+              <a
+                href={STUDIO_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-signal"
+              >
+                Studio →
+              </a>
+            </div>
           </div>
         </section>
       </AppShell>

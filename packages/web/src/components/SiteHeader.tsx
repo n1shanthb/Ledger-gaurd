@@ -5,7 +5,7 @@ import { useState } from "react";
 
 const marketing = [
   { href: "/#how", label: "How it works" },
-  { href: "/#proof", label: "Verified fills" },
+  { href: "/#proof", label: "Live proof" },
   { href: "/protect", label: "Overview" },
 ];
 

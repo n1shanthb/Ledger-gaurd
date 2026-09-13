@@ -1,15 +1,15 @@
 const pillars = [
   {
     title: "Hardware bounds",
-    body: "You clear-sign the max amount and price band. Master key never leaves Ledger.",
+    body: "You clear-sign amount and price bands on Ledger OLED. Master key never leaves the device; Key Ring holds keeper secrets — not the chat model.",
   },
   {
     title: "Autonomous watch",
-    body: "Key Ring holds keeper secrets. Agents pay x402, evaluate Pyth, and fill only inside your signed limits.",
+    body: "Composer, Clerk, and Solver advise; Payer, Autopilot, and Driver are code. They pay x402, read live Graph + Pyth, and fill only inside your signed limits.",
   },
   {
-    title: "Verifiable outcome",
-    body: "Receipt Graph on Subgraph Studio indexes real Base fills and kills — sponsor tech as proof, not jargon.",
+    title: "Graph-backed proof",
+    body: "Receipt Graph is load-bearing: active policies for the keeper, execution receipts and kills for Activity, payment audits with HCS refs, plus Messari lending/DEX fan-out for risk gates — not a receipt dump.",
   },
 ];
 
@@ -21,7 +21,7 @@ export function Pillars() {
           Why it matters
         </p>
         <h2 className="mt-4 max-w-xl font-display text-3xl font-semibold tracking-tight text-paper md:text-4xl">
-          Outcome first. Sponsors as proof.
+          Bounds on device. Automation in the keeper. Proof on Graph.
         </h2>
         <div className="mt-16 space-y-16">
           {pillars.map((p, i) => (

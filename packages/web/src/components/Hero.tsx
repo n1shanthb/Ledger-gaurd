@@ -13,8 +13,10 @@ export function Hero() {
           Hardware-bounded exits for autonomous DeFi.
         </h1>
         <p className="animate-rise-late mt-6 max-w-xl text-lg leading-relaxed text-mute md:text-xl">
-          Clear-sign stop-loss and take-profit on Ledger. Keeper agents pay x402,
-          fill on Base, and every receipt lands in The Graph.
+          Clear-sign stop-loss, take-profit, or buy-dip on Ledger. Six keeper
+          roles pay Hedera x402, evaluate Pyth, and fill on Base — while The Graph
+          drives which policies are live, gates risk via Messari standards, and
+          indexes fills, kills, and payment audits you can query.
         </p>
         <div className="animate-rise-late mt-10 flex flex-wrap items-center gap-4">
           <Link

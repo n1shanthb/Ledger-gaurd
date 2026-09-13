@@ -22,17 +22,17 @@ const steps = [
   {
     k: "05",
     t: "Keeper watches",
-    d: "Safe to unplug. Autopilot monitors bands without your USB.",
+    d: "Safe to unplug. Autopilot loads live policies from Receipt Graph and watches bands without USB.",
   },
   {
     k: "06",
     t: "Paid attempt",
-    d: "Hedera x402 pays for evaluation — not the same as a fill.",
+    d: "Hedera x402 pays for an evaluation attempt — payment is not a fill.",
   },
   {
     k: "07",
-    t: "Receipt Graph",
-    d: "Verified fills and kills index on Base for anyone to audit.",
+    t: "Graph audit trail",
+    d: "Fills, kills, and payment audits index for Activity, Clerk NL queries, and explorers — Graph is how the system knows what happened.",
   },
 ];
 
@@ -44,7 +44,7 @@ export function ProtocolStrip() {
           How it works
         </p>
         <h2 className="mt-4 max-w-2xl font-display text-3xl font-semibold tracking-tight text-paper md:text-5xl">
-          Seven steps from device to verified fill.
+          Seven steps from device to Graph-backed fill.
         </h2>
         <ol className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {steps.map((s) => (

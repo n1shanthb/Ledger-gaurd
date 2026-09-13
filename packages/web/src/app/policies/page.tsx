@@ -10,7 +10,7 @@ export default function ProtectionsPage() {
       <AppShell
         eyebrow="Protections"
         title="Protections"
-        subtitle="Your clear-signed policies with status and next actions. Global index is available as a judge/explorer view."
+        subtitle="Clear-signed policies with status and next actions. Backed by the live Receipt Graph index (owner filter when your Ledger address is connected)."
       >
         <PoliciesExplorer />
       </AppShell>

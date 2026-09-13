@@ -29,14 +29,14 @@ const HINT: Partial<Record<JourneyStage, Partial<Record<AgentId, string>>>> = {
   review: { solver: "Session key moves only what you clear-sign." },
   signing: { autopilot: "Confirm OLED rows. Master key never leaves Ledger." },
   monitor: {
-    autopilot: "Safe to unplug while watching.",
-    payer: "Paid attempt ≠ fill.",
+    autopilot: "Loads live policies from Receipt Graph — safe to unplug.",
+    payer: "x402 pays for an attempt; Graph + Pyth decide the fill.",
   },
   outcome: {
     driver: "Reports only actual /trigger results.",
-    clerk: "Graph may lag a few blocks.",
+    clerk: "Receipt Graph indexes fills, kills, and audits — may lag a few blocks.",
   },
-  kill: { clerk: "Stops all protections after clear-sign." },
+  kill: { clerk: "Kill indexes on Graph after clear-sign." },
 };
 
 function nodeState(graph: GraphState | null, id: AgentId) {

@@ -7,7 +7,8 @@ export function SiteFooter() {
         <div>
           <p className="font-display text-2xl text-paper">LGA</p>
           <p className="mt-2 max-w-sm text-sm text-mute">
-            Master key never leaves Ledger. Key Ring holds keeper secrets.
+            Master key never leaves Ledger. Key Ring holds keeper secrets. The
+            Graph is load-bearing — policies, receipts, audits, Messari compose.
           </p>
         </div>
         <div className="flex flex-wrap gap-6 text-sm text-mute">

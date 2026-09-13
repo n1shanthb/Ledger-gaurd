@@ -9,7 +9,7 @@ export default function ProtectResearchPage() {
     <>
       <AppShell
         title="Market research"
-        subtitle="Advanced Messari-backed decision surface. Not required for the core Protect journey."
+        subtitle="Messari lending + DEX fan-out on The Graph Gateway — same decide path the keeper Solver uses for risk gates. Optional for Protect; load-bearing for Composable."
       >
         <ComposeProof />
       </AppShell>
