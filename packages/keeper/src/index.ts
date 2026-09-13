@@ -1,7 +1,7 @@
 import express from "express";
 import { loadSecrets, ringStatus } from "./ring";
 import { createCapabilityBroker } from "./capabilities";
-import { fetchActivePolicies, mcpHint } from "./subgraph";
+import { fetchActivePolicies, friendlyGraphError, mcpHint } from "./subgraph";
 import { runCycle } from "./cycle";
 import { keeperX402 } from "./x402";
 import { newAttemptId, recentPayments, recordPayment } from "./payments";
@@ -16,7 +16,7 @@ import {
   paymentAuditBridgeStatus,
 } from "./agentIdentity";
 import { agentChat } from "./agent/chat";
-import type { AgentEvent } from "./agent/types";
+import type { AgentEvent, UiState } from "./agent/types";
 import { startPayOnHit } from "./payOnHit";
 import { confirmPolicyProposals } from "./agent/proposeConfirm";
 import { draftIsReady, parsePolicyDraft, type PolicyDraft } from "./agent/policyDraft";
@@ -156,7 +156,10 @@ async function handlePaidCycle(
       graphBridge: bridge,
     });
   } catch (err) {
-    res.status(500).json({ error: String(err), attemptId });
+    res.status(500).json({
+      error: friendlyGraphError(err),
+      attemptId,
+    });
   }
 }
 
@@ -186,7 +189,7 @@ app.get("/policies", async (_req, res) => {
     const policies = await fetchActivePolicies(secrets.graphUrl, secrets.graphApiKey);
     res.json({ policies, mcp: mcpHint(secrets.graphUrl) });
   } catch (err) {
-    res.status(502).json({ error: String(err) });
+    res.status(502).json({ error: friendlyGraphError(err) });
   }
 });
 
@@ -221,6 +224,7 @@ app.post("/agent/run", async (req, res) => {
     res.status(400).json({ error: "messages required" });
     return;
   }
+  const uiState = (req.body?.uiState ?? null) as UiState | null;
 
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -232,7 +236,7 @@ app.post("/agent/run", async (req, res) => {
   };
 
   try {
-    await agentChat(secrets, messages, send);
+    await agentChat(secrets, messages, send, uiState);
   } catch (err) {
     send({
       type: "error",
@@ -280,7 +284,7 @@ app.post("/agent/propose", async (req, res) => {
       emit: send,
       runId,
     });
-    send({ type: "run_end", runId, reply: text });
+    send({ type: "run_end", runId, reply: text, action: { type: "none" } });
     res.end();
   } catch (err) {
     if (!res.headersSent) {
@@ -340,5 +344,9 @@ app.listen(port, () => {
   if (process.env.PAY_ON_HIT === "1" || process.env.PAY_ON_HIT === "true") {
     console.log("[lga] Autopilot pay-on-hit enabled (PAY_ON_HIT=1)");
     startPayOnHit(secrets);
+  } else {
+    console.log(
+      "[lga] Autopilot off (PAY_ON_HIT≠1) — fill take: PAY_ON_HIT=1 WATCH_MS=5000 npm run pay:on-hit",
+    );
   }
 });

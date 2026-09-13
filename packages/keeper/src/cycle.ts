@@ -9,6 +9,7 @@ import { executePolicy } from "./executor";
 import type { KeeperSecrets } from "./ring";
 import type { PaymentHit } from "./payments";
 import { createCapabilityBroker, stampCapability } from "./capabilities";
+import { graphCooldownRemaining } from "./graphGuard";
 
 export type CycleOpts = {
   execute: boolean;
@@ -21,13 +22,20 @@ export type CycleResult = {
   note?: string;
 };
 
+function stampCycleReads(secrets: KeeperSecrets) {
+  const broker = createCapabilityBroker(secrets);
+  // Pyth/Hermes every tick — band truth. Graph stamp only when we may live-query.
+  stampCapability(broker, "read:pyth", 30_000);
+  if (graphCooldownRemaining() === 0) {
+    stampCapability(broker, "read:graph", 30_000);
+  }
+}
+
 export async function runCycle(
   secrets: KeeperSecrets,
   opts: CycleOpts = { execute: true },
 ): Promise<CycleResult> {
-  const broker = createCapabilityBroker(secrets);
-  stampCapability(broker, "read:graph", 30_000);
-  stampCapability(broker, "read:pyth", 30_000);
+  stampCycleReads(secrets);
   const policies = await fetchActivePolicies(secrets.graphUrl, secrets.graphApiKey);
   const hits: PaymentHit[] = [];
   const skips: CycleResult["skips"] = [];
@@ -119,9 +127,7 @@ export async function runCycle(
 export async function findHitPolicies(secrets: KeeperSecrets): Promise<
   { pol: PolicyRow; trigger: string; spot: bigint }[]
 > {
-  const broker = createCapabilityBroker(secrets);
-  stampCapability(broker, "read:graph", 30_000);
-  stampCapability(broker, "read:pyth", 30_000);
+  stampCycleReads(secrets);
   const policies = await fetchActivePolicies(secrets.graphUrl, secrets.graphApiKey);
   const out: { pol: PolicyRow; trigger: string; spot: bigint }[] = [];
   for (const pol of policies) {
