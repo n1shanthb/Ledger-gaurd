@@ -88,6 +88,7 @@ type Item =
       hederaPaymentRef?: string;
       policyId?: string;
       attemptId?: string;
+      agentId?: string | null;
     };
 
 type KeeperPay = {
@@ -250,6 +251,7 @@ function ActivityDetail({
     body = (
       <dl>
         <DetailRow label="HCS ref" value={item.hcsRef || "—"} />
+        <DetailRow label="Agent id" value={item.agentId || "—"} />
         <DetailRow label="Hedera pay" value={item.hederaPaymentRef || "—"} />
         <DetailRow
           label="Attempt"
@@ -561,6 +563,7 @@ export function ActivityTimeline({
       });
     }
     for (const a of paymentAudits) {
+      const agentFromRef = a.hederaPaymentRef?.match(/agent=([a-z0-9_-]+)/i)?.[1];
       list.push({
         kind: "x402",
         id: `audit-${a.id}`,
@@ -569,6 +572,7 @@ export function ActivityTimeline({
         hederaPaymentRef: a.hederaPaymentRef,
         policyId: a.policyId,
         attemptId: a.attemptId,
+        agentId: agentFromRef ?? null,
       });
     }
     const seenHcs = new Set(
@@ -584,6 +588,7 @@ export function ActivityTimeline({
         hcsRef: p.hcsRef,
         hashscanUrl: p.hashscanUrl,
         attemptId: p.attemptId,
+        agentId: p.agentId,
       });
     }
     for (const k of kills) {
@@ -820,7 +825,9 @@ export function ActivityTimeline({
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <div className="flex flex-wrap items-baseline gap-3">
                         <Badge tone="success">x402</Badge>
-                        <span className="text-paper">Hedera payment memo</span>
+                        <span className="text-paper">
+                          Hedera payment · agent {item.agentId ?? "unknown"}
+                        </span>
                       </div>
                       <span className="font-mono text-[11px] text-mute">
                         {formatTs(item.ts)}
