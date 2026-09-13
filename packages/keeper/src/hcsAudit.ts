@@ -51,5 +51,5 @@ export function hcsHashscanUrl(
   const topicId = parts[0];
   if (!topicId) return null;
   const net = network === "hedera:mainnet" ? "mainnet" : "testnet";
-  return `https://hashscan.io/${net}/topic/${topicId}`;
+  return `https://hashscan.io/${net}/topic/${topicId}/messages`;
 }

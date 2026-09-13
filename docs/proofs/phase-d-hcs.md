@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-12  
 **Topic:** `0.0.10423816` (Hedera testnet)  
-**HashScan:** https://hashscan.io/testnet/topic/0.0.10423816
+**HashScan:** https://hashscan.io/testnet/topic/0.0.10423816/messages
 
 ---
 
