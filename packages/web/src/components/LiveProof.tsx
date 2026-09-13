@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { BASESCAN_GPM, KILL_TX, POLICY_TX, STUDIO_URL } from "@/lib/constants";
+import { BASESCAN_GPM, EXPLORER_URL, KILL_TX, POLICY_TX } from "@/lib/constants";
 
 const proofs = [
   { label: "GuardianPolicyManager", href: BASESCAN_GPM, meta: "Base · v2" },
   { label: "Policy clear-sign tx", href: POLICY_TX, meta: "Ledger OLED" },
   { label: "Kill switch tx", href: KILL_TX, meta: "Delegation revoked" },
-  { label: "Receipt Graph Studio", href: STUDIO_URL, meta: "Live subgraph" },
+  { label: "Receipt Graph", href: EXPLORER_URL, meta: "Decentralized network" },
 ];
 
 export function LiveProof() {

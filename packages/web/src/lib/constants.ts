@@ -7,12 +7,28 @@ export const SESSION_VALIDATOR =
 export const SWAP_EXECUTOR =
   "0x4767a9Deee297d73B72cDD850850D11B221034Ab" as const;
 
+/** Decentralized network Receipt Graph (Bearer via GRAPH_API_KEY). */
 export const SUBGRAPH_QUERY_URL =
   process.env.NEXT_PUBLIC_SUBGRAPH_QUERY_URL ??
-  "https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.4";
+  "https://gateway.thegraph.com/api/subgraphs/id/GfvNLa3ym7X6bNDNm6oyqvHGgW2anbzTKhEo7cFPjhvz";
 
 export const STUDIO_URL =
   "https://thegraph.com/studio/subgraph/ledger-guardian-agent";
+
+export const EXPLORER_URL =
+  "https://thegraph.com/explorer/subgraphs/GfvNLa3ym7X6bNDNm6oyqvHGgW2anbzTKhEo7cFPjhvz?view=Query&chain=arbitrum-one";
+
+/** Auth header for Gateway / Studio queries (client may use NEXT_PUBLIC_). */
+export function subgraphAuthHeaders(): Record<string, string> {
+  const key =
+    process.env.NEXT_PUBLIC_GRAPH_API_KEY?.trim() ||
+    process.env.GRAPH_API_KEY?.trim();
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (key) headers.Authorization = `Bearer ${key}`;
+  return headers;
+}
 
 export const BASESCAN_GPM = `https://basescan.org/address/${GPM_V2}`;
 

@@ -1,4 +1,4 @@
-import { GPM_V2 } from "@/lib/constants";
+import { GPM_V2, SUBGRAPH_QUERY_URL, subgraphAuthHeaders } from "@/lib/constants";
 
 const POLICY_CREATED_TOPIC =
   "0xc0ef32a861a2cbcfc8adbaef809425e06c37350c1035bbcca774693fb590ac8a";
@@ -95,17 +95,26 @@ export type StudioMeta = {
 };
 
 export async function fetchStudioMeta(
-  queryUrl: string,
+  _queryUrl?: string,
 ): Promise<StudioMeta | null> {
   try {
-    const res = await fetch(queryUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        query: "{ _meta { block { number } hasIndexingErrors } }",
-      }),
-      cache: "no-store",
+    const body = JSON.stringify({
+      query: "{ _meta { block { number } hasIndexingErrors } }",
     });
+    const res =
+      typeof window === "undefined"
+        ? await fetch(_queryUrl || SUBGRAPH_QUERY_URL, {
+            method: "POST",
+            headers: subgraphAuthHeaders(),
+            body,
+            cache: "no-store",
+          })
+        : await fetch("/api/receipt-graph", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body,
+            cache: "no-store",
+          });
     const j = (await res.json()) as {
       data?: { _meta?: { block?: { number: number }; hasIndexingErrors?: boolean } };
     };
