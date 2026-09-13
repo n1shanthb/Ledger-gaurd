@@ -28,8 +28,10 @@ ENV LGA_SECRETS_SOURCE=ring
 ENV LGA_RING_KEY=lga-keeper
 ENV LGA_SECRETS_ENC=/app/secrets.env.enc
 ENV WALLET_CLI_BIN=/app/node_modules/@ledgerhq/wallet-cli/bin/wallet-cli
-ENV PAY_ON_HIT=1
-ENV WATCH_MS=30000
+ENV PAY_ON_HIT=0
+ENV WATCH_MS=90000
+ENV GRAPH_POLICY_CACHE_MS=300000
+# Fill take / video: set PAY_ON_HIT=1 and WATCH_MS=5000 in Railway vars
 
 EXPOSE 3001
 
