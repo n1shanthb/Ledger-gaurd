@@ -1,7 +1,7 @@
 import type { KeeperSecrets } from "../ring";
 import type { Emit } from "./types";
 import { openRouterJson } from "./openrouter";
-import { runTool, type ToolCtx } from "./tools";
+import { runMarketTool, type ToolCtx } from "./tools";
 import {
   draftSummary,
   enrichDraftFromSpot,
@@ -33,7 +33,7 @@ export async function runPolicyIntake(opts: {
     agent: "composer",
     tool: "getPythSpot",
   });
-  const spotRes = await runTool(
+  const spotRes = await runMarketTool(
     opts.ctx,
     "getPythSpot",
     JSON.stringify({ asset: "eth" }),

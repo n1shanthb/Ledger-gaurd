@@ -2,10 +2,19 @@ import type { KeeperSecrets } from "../ring";
 import type { Emit } from "./types";
 import { toolsFor } from "./toolDefs";
 import { runSpecialistLoop } from "./openrouter";
-import type { ToolCtx } from "./tools";
+import {
+  asClerkCtx,
+  runClerkTool,
+  type ClerkToolName,
+  type ToolCtx,
+} from "./tools";
 
-/** Status via Subgraph MCP consumer + optional x402 payment list. */
-const ALLOW = new Set(["queryReceiptGraphNl", "getRecentPayments"]);
+/** Status via Subgraph MCP consumer + optional x402 payment list.
+ * Exactly one Receipt Graph hit per ask: queryReceiptGraphNl only (no listActivePolicies). */
+const ALLOW = new Set<ClerkToolName>([
+  "queryReceiptGraphNl",
+  "getRecentPayments",
+]);
 
 export async function runClerk(opts: {
   secrets: KeeperSecrets;
@@ -16,25 +25,36 @@ export async function runClerk(opts: {
   runId: string;
   toolTrace: string[];
 }): Promise<string> {
+  const clerkCtx = asClerkCtx(opts.ctx);
   return runSpecialistLoop({
     secrets: opts.secrets,
     agent: "clerk",
     model: opts.secrets.openRouterModels.clerk,
-    system: `You are LGA Receipt Clerk — status only for the Use Case agent/app (not a tooling MCP product).
-HARD RULES:
-- Always call queryReceiptGraphNl first with the user's natural-language question (Subgraph MCP consumer → live Subgraph Studio Receipt Graph).
-- Payment / HCS / x402 / “who paid” questions → Graph PaymentAudit rows (hcsRef + hederaPaymentRef) bridge Hedera settle into Receipt Graph.
-- Call getRecentPayments only for keeper in-memory x402 attempt history (agentId, HashScan, HCS).
-- Zero policies / empty receipts is valid — say so from live data; never invent.
+    system: `You are LGA's Receipt Clerk — friendly status desk for this app.
+Talk like a helpful teammate. Short and clear.
+Rules:
+- Call queryReceiptGraphNl first with the user's question.
+- Empty results are fine — say so honestly.
+- 2–4 natural sentences. No JSON dumps, no raw URLs, no markdown walls.
 - Never claim you signed on Ledger. Never pay x402.
-Master key never leaves Ledger; Key Ring holds keeper secrets. Hedera names which agent spent the pay capability.
+Master key never leaves Ledger; Key Ring holds keeper secrets.
 ${opts.brief ? `Composer note: ${opts.brief}` : ""}`,
     userContent: `${opts.userText}
 
-Call queryReceiptGraphNl now with {"question":"<user ask>"}.`,
+Call queryReceiptGraphNl with {"question":"<user ask>"}, then answer in plain language.`,
     tools: toolsFor([...ALLOW]),
-    allow: ALLOW,
+    allow: new Set(ALLOW),
     ctx: opts.ctx,
+    executeTool: (name, args) => {
+      if (!ALLOW.has(name as ClerkToolName)) {
+        return Promise.resolve({
+          out: JSON.stringify({ error: `clerk cannot run ${name}` }),
+          summary: "disallowed",
+          ok: false,
+        });
+      }
+      return runClerkTool(clerkCtx, name as ClerkToolName, args);
+    },
     emit: opts.emit,
     runId: opts.runId,
     toolTrace: opts.toolTrace,

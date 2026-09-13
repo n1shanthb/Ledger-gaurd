@@ -1,9 +1,9 @@
 /**
  * Subgraph MCP consumer path for Receipt Clerk.
  * LGA is the Use Case agent/app — not a standalone tooling MCP product.
- * NL question → Receipt Graph GraphQL → live Subgraph Studio (same data MCP targets).
  */
 import type { KeeperSecrets } from "../ring";
+import { assertGraphAvailable, noteGraphHttpStatus } from "../graphGuard";
 
 export type McpQueryKind = "policies" | "receipts" | "audits" | "status";
 
@@ -36,7 +36,6 @@ const QUERIES: Record<McpQueryKind, string> = {
 }`,
 };
 
-/** Map natural-language Clerk questions to a Receipt Graph query kind. */
 export function classifyReceiptQuestion(question: string): McpQueryKind {
   const q = question.toLowerCase();
   if (
@@ -56,7 +55,7 @@ export function classifyReceiptQuestion(question: string): McpQueryKind {
 
 export type SubgraphMcpResult = {
   source: "subgraph-mcp-consumer";
-  pitch: "LGA Use Case agent/app — Clerk consumes live Receipt Graph via Subgraph MCP path";
+  pitch: string;
   studioUrl: string;
   question: string;
   kind: McpQueryKind;
@@ -68,6 +67,8 @@ export async function queryReceiptGraphNl(
   secrets: KeeperSecrets,
   question: string,
 ): Promise<SubgraphMcpResult> {
+  assertGraphAvailable();
+
   const url = secrets.graphUrl?.trim();
   if (!url) throw new Error("SUBGRAPH_QUERY_URL missing from Key Ring / env");
   const apiKey =
@@ -86,8 +87,13 @@ export async function queryReceiptGraphNl(
     body: JSON.stringify({ query: graphql }),
     signal: AbortSignal.timeout(20_000),
   });
+  noteGraphHttpStatus(res.status);
   if (!res.ok) {
-    throw new Error(`subgraph-mcp studio ${res.status}`);
+    throw new Error(
+      res.status === 429
+        ? "Receipt Graph hit The Graph Studio free-tier rate limit — wait ~30–45s."
+        : `subgraph-mcp studio ${res.status}`,
+    );
   }
   const json = (await res.json()) as {
     data?: unknown;

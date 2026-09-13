@@ -1,7 +1,7 @@
 import type { AgentId, Emit, ToolDef } from "./types";
 import type { KeeperSecrets } from "../ring";
 import { redactSecrets } from "../capabilities";
-import { runTool, type ToolCtx } from "./tools";
+import type { ToolCtx } from "./tools";
 
 type Msg = Record<string, unknown>;
 
@@ -103,13 +103,18 @@ export async function runSpecialistLoop(opts: {
   tools: ToolDef[];
   allow: Set<string>;
   ctx: ToolCtx;
+  /** Typed executor — Clerk vs market so Receipt Graph can't leak into Solver. */
+  executeTool: (name: string, argsJson: string) => Promise<{
+    out: string;
+    summary: string;
+    ok: boolean;
+    gateProceed?: boolean;
+  }>;
   emit: Emit;
   runId: string;
   maxRounds?: number;
   toolTrace: string[];
-  /** First round must call a tool (stops "need more info" dead-ends). */
   forceToolsFirst?: boolean;
-  /** If set with forceToolsFirst, require this specific tool on round 0. */
   forceToolName?: string;
 }): Promise<string> {
   const {
@@ -121,6 +126,7 @@ export async function runSpecialistLoop(opts: {
     tools,
     allow,
     ctx,
+    executeTool,
     emit,
     runId,
     toolTrace,
@@ -182,7 +188,7 @@ export async function runSpecialistLoop(opts: {
         }
         toolTrace.push(`${agent}:${name}`);
         emit({ type: "tool_start", runId, agent, tool: name });
-        const result = await runTool(ctx, name, tc.function.arguments || "{}");
+        const result = await executeTool(name, tc.function.arguments || "{}");
         const safeOut = redactSecrets(result.out, secrets);
         const safeSummary = result.summary
           ? redactSecrets(result.summary, secrets)

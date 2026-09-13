@@ -17,6 +17,7 @@ import {
   type CapabilityBroker,
 } from "../capabilities";
 
+/** Shared secrets/gate — no Receipt Graph MCP surface. */
 export type ToolCtx = {
   secrets: KeeperSecrets;
   gateProceed: boolean | null;
@@ -24,12 +25,35 @@ export type ToolCtx = {
   broker?: CapabilityBroker;
 };
 
+/**
+ * Branded ctx for Clerk-only tools (Receipt Graph MCP + payment list).
+ * Solver/advise/propose must never receive this type.
+ */
+export type ClerkCtx = ToolCtx & { readonly __clerkBrand: unique symbol };
+
+export function asClerkCtx(ctx: ToolCtx): ClerkCtx {
+  return ctx as ClerkCtx;
+}
+
 export type ToolResult = {
   out: string;
   summary: string;
   ok: boolean;
   gateProceed?: boolean;
 };
+
+export type MarketToolName =
+  | "getPythSpot"
+  | "compareLendingRisk"
+  | "findDeepestWethPool"
+  | "evaluateSwapGate"
+  | "proposeGuardianPolicy"
+  | "requestExecutionAttempt";
+
+export type ClerkToolName =
+  | "queryReceiptGraphNl"
+  | "listActivePolicies"
+  | "getRecentPayments";
 
 function ensureGraphKey(secrets: KeeperSecrets) {
   const key = secrets.graphApiKey?.trim() || process.env.GRAPH_API_KEY?.trim();
@@ -41,73 +65,41 @@ function brokerOf(ctx: ToolCtx): CapabilityBroker {
   return ctx.broker ?? createCapabilityBroker(ctx.secrets);
 }
 
-/** Stamp read scope before Graph/Pyth tool work (in-process; not an agent RPC). */
 function stampRead(ctx: ToolCtx, scope: "read:graph" | "read:pyth") {
   return stampCapability(brokerOf(ctx), scope, 60_000);
 }
 
-export async function runTool(
+/**
+ * Gateway (Messari/DEX/gate) ≠ Studio Receipt Graph host, but same API key can
+ * still throttle under demo spam. Short TTL cache for advise/execute hot path.
+ */
+const MARKET_CACHE_MS = Number(process.env.MARKET_TOOL_CACHE_MS ?? 60_000);
+type MarketCache = { at: number; result: ToolResult };
+const marketCache = new Map<string, MarketCache>();
+
+function cachedMarket(key: string): ToolResult | null {
+  const hit = marketCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > MARKET_CACHE_MS) {
+    marketCache.delete(key);
+    return null;
+  }
+  return hit.result;
+}
+
+function putMarketCache(key: string, result: ToolResult) {
+  if (result.ok) marketCache.set(key, { at: Date.now(), result });
+}
+
+/** Market / Pyth / HITL / pay tools — never Receipt Graph MCP. */
+export async function runMarketTool(
   ctx: ToolCtx,
-  name: string,
+  name: MarketToolName,
   argsJson: string,
 ): Promise<ToolResult> {
   const args = argsJson ? (JSON.parse(argsJson) as Record<string, unknown>) : {};
   try {
     switch (name) {
-      case "queryReceiptGraphNl": {
-        stampRead(ctx, "read:graph");
-        const question = String(args.question ?? "").trim();
-        if (!question) {
-          return {
-            out: JSON.stringify({ error: "question required" }),
-            summary: "missing question",
-            ok: false,
-          };
-        }
-        const result = await queryReceiptGraphNl(ctx.secrets, question);
-        const summary =
-          result.kind === "policies"
-            ? `mcp policies ${(result.data as { policies?: unknown[] })?.policies?.length ?? 0}`
-            : result.kind === "receipts"
-              ? `mcp receipts ${(result.data as { executionReceipts?: unknown[] })?.executionReceipts?.length ?? 0}`
-              : result.kind === "audits"
-                ? `mcp audits ${(result.data as { paymentAudits?: unknown[] })?.paymentAudits?.length ?? 0}`
-                : "mcp status";
-        return {
-          out: JSON.stringify(result),
-          summary,
-          ok: true,
-        };
-      }
-      case "listActivePolicies": {
-        stampRead(ctx, "read:graph");
-        const policies = await fetchActivePolicies(
-          ctx.secrets.graphUrl,
-          ctx.secrets.graphApiKey,
-        );
-        const rows = policies.map(
-          (p: {
-            id: string;
-            policyType: string;
-            stopLossPrice: string;
-            takeProfitPrice: string;
-            maxAmount: string;
-            token: string;
-          }) => ({
-            id: p.id,
-            type: p.policyType,
-            stop: Number(p.stopLossPrice) / 1e8,
-            take: Number(p.takeProfitPrice) / 1e8,
-            maxAmount: p.maxAmount,
-            token: p.token,
-          }),
-        );
-        return {
-          out: JSON.stringify(rows),
-          summary: `${rows.length} policies`,
-          ok: true,
-        };
-      }
       case "getPythSpot": {
         stampRead(ctx, "read:pyth");
         const asset = String(args.asset ?? "eth");
@@ -124,6 +116,9 @@ export async function runTool(
         };
       }
       case "compareLendingRisk": {
+        const cacheKey = `lend:${String(args.assetSymbol ?? "USDC")}`;
+        const hit = cachedMarket(cacheKey);
+        if (hit) return { ...hit, summary: `${hit.summary} (cached)` };
         stampRead(ctx, "read:graph");
         ensureGraphKey(ctx.secrets);
         const d = await decideSafestBorrow({
@@ -131,7 +126,7 @@ export async function runTool(
           network: "base",
           snappy: true,
         });
-        return {
+        const result: ToolResult = {
           out: JSON.stringify({
             verdict: d.verdict,
             winner: d.winner
@@ -148,15 +143,20 @@ export async function runTool(
           summary: d.verdict.slice(0, 80),
           ok: true,
         };
+        putMarketCache(cacheKey, result);
+        return result;
       }
       case "findDeepestWethPool": {
+        const cacheKey = `dex:${Boolean(args.crossChain)}`;
+        const hit = cachedMarket(cacheKey);
+        if (hit) return { ...hit, summary: `${hit.summary} (cached)` };
         stampRead(ctx, "read:graph");
         ensureGraphKey(ctx.secrets);
         const d = await decideDeepestWethPool({
           baseOnly: !Boolean(args.crossChain),
           snappy: true,
         });
-        return {
+        const result: ToolResult = {
           out: JSON.stringify({
             verdict: d.verdict,
             winner: d.winner
@@ -172,8 +172,19 @@ export async function runTool(
           summary: d.verdict.slice(0, 80),
           ok: true,
         };
+        putMarketCache(cacheKey, result);
+        return result;
       }
       case "evaluateSwapGate": {
+        const cacheKey = `gate:${String(args.assetSymbol ?? "USDC")}:${Boolean(args.crossChainDex)}`;
+        const hit = cachedMarket(cacheKey);
+        if (hit) {
+          return {
+            ...hit,
+            summary: `${hit.summary} (cached)`,
+            gateProceed: hit.gateProceed,
+          };
+        }
         stampRead(ctx, "read:graph");
         ensureGraphKey(ctx.secrets);
         const g = await evaluateSwapGate({
@@ -187,7 +198,7 @@ export async function runTool(
           crossChainDex: Boolean(args.crossChainDex),
           snappy: true,
         });
-        return {
+        const result: ToolResult = {
           out: JSON.stringify({
             proceed: g.proceed,
             reasons: g.reasons,
@@ -198,6 +209,8 @@ export async function runTool(
           ok: true,
           gateProceed: g.proceed,
         };
+        putMarketCache(cacheKey, result);
+        return result;
       }
       case "proposeGuardianPolicy":
         return {
@@ -243,6 +256,79 @@ export async function runTool(
           ok: true,
         };
       }
+      default: {
+        const _exhaustive: never = name;
+        return {
+          out: JSON.stringify({ error: `unknown market tool ${_exhaustive}` }),
+          summary: "unknown tool",
+          ok: false,
+        };
+      }
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      out: JSON.stringify({ error: msg }),
+      summary: msg.slice(0, 80),
+      ok: false,
+    };
+  }
+}
+
+/** Receipt Graph MCP + payment audit — Clerk only. */
+export async function runClerkTool(
+  ctx: ClerkCtx,
+  name: ClerkToolName,
+  argsJson: string,
+): Promise<ToolResult> {
+  const args = argsJson ? (JSON.parse(argsJson) as Record<string, unknown>) : {};
+  try {
+    switch (name) {
+      case "queryReceiptGraphNl": {
+        stampRead(ctx, "read:graph");
+        const question = String(args.question ?? "").trim();
+        if (!question) {
+          return {
+            out: JSON.stringify({ error: "question required" }),
+            summary: "missing question",
+            ok: false,
+          };
+        }
+        const result = await queryReceiptGraphNl(ctx.secrets, question);
+        const summary =
+          result.kind === "policies"
+            ? `mcp policies ${(result.data as { policies?: unknown[] })?.policies?.length ?? 0}`
+            : result.kind === "receipts"
+              ? `mcp receipts ${(result.data as { executionReceipts?: unknown[] })?.executionReceipts?.length ?? 0}`
+              : result.kind === "audits"
+                ? `mcp audits ${(result.data as { paymentAudits?: unknown[] })?.paymentAudits?.length ?? 0}`
+                : "mcp status";
+        return {
+          out: JSON.stringify(result),
+          summary,
+          ok: true,
+        };
+      }
+      case "listActivePolicies": {
+        stampRead(ctx, "read:graph");
+        const policies = await fetchActivePolicies(
+          ctx.secrets.graphUrl,
+          ctx.secrets.graphApiKey,
+        );
+        const rows = policies.map((p) => ({
+          id: p.id,
+          type: p.policyType,
+          stop: Number(p.stopLossPrice) / 1e8,
+          take: Number(p.takeProfitPrice) / 1e8,
+          maxAmount: p.maxAmount,
+          token: p.token,
+        }));
+        return {
+          out: JSON.stringify(rows),
+          summary: `${rows.length} policies`,
+          ok: true,
+        };
+      }
       case "getRecentPayments": {
         const rows = recentPayments(Number(args.limit ?? 10)).map((p) => {
           const hcsTopicUrl =
@@ -261,12 +347,14 @@ export async function runTool(
           ok: true,
         };
       }
-      default:
+      default: {
+        const _exhaustive: never = name;
         return {
-          out: JSON.stringify({ error: `unknown tool ${name}` }),
+          out: JSON.stringify({ error: `unknown clerk tool ${_exhaustive}` }),
           summary: "unknown tool",
           ok: false,
         };
+      }
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

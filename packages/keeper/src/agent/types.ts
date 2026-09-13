@@ -8,13 +8,47 @@ export type AgentId =
 
 export type Pipeline =
   | "status"
-  | "risk"
-  | "execute"
+  | "advise"
   | "propose"
+  | "modify"
+  | "execute"
   | "full";
 
 export type { PolicyDraft, PolicyDraftItem, StrategyType } from "./policyDraft";
-import type { PolicyDraft } from "./policyDraft";
+import type {
+  PolicyDraft,
+  PolicyDraftItem,
+  StrategyType,
+} from "./policyDraft";
+
+export type Evidence = {
+  label: string;
+  value: string;
+  source: "pyth" | "messari" | "dex" | "gate";
+};
+
+export type AgentAction =
+  | { type: "none" }
+  | { type: "open_form"; payload: { kind: StrategyType; draft: PolicyDraft } }
+  | {
+      type: "patch_form";
+      payload: { patch: Partial<PolicyDraftItem>; reason?: string };
+    }
+  | {
+      /** Explain-advise: structured evidence, no CTA / no form open. */
+      type: "show_evidence";
+      payload: { evidence: Evidence[] };
+    }
+  | {
+      type: "suggest_policy";
+      payload: { draft: PolicyDraft; cta: string; evidence: Evidence[] };
+    };
+
+export type UiState = {
+  formOpen: boolean;
+  formKind: StrategyType | null;
+  draft: PolicyDraftItem | null;
+};
 
 export type AgentEvent =
   | { type: "run_start"; runId: string }
@@ -39,7 +73,7 @@ export type AgentEvent =
   | { type: "gate"; runId: string; proceed: boolean; reasons: string[] }
   | { type: "policy_draft"; runId: string; draft: PolicyDraft }
   | { type: "agent_end"; runId: string; agent: AgentId }
-  | { type: "run_end"; runId: string; reply: string }
+  | { type: "run_end"; runId: string; reply: string; action: AgentAction }
   | { type: "error"; runId: string; agent?: AgentId; message: string };
 
 export type Emit = (ev: AgentEvent) => void;
@@ -59,6 +93,7 @@ export type RunResult = {
   agents: { agent: AgentId; model: string }[];
   gateProceed: boolean | null;
   policyDraft?: PolicyDraft | null;
+  action: AgentAction;
 };
 
 export type ToolDef = {

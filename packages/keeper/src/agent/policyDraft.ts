@@ -189,3 +189,66 @@ export function draftSummary(d: PolicyDraft): string {
   }
   return lines.join("\n");
 }
+
+/** Shallow merge onto primary — does not remount/reset addons or wipe unset fields. */
+export function patchDraft(
+  draft: PolicyDraft,
+  patch: Partial<PolicyDraftItem>,
+): PolicyDraft {
+  const primary: PolicyDraftItem = { ...draft.primary };
+  if (patch.strategyType != null) primary.strategyType = patch.strategyType;
+  if (patch.asset != null && patch.asset.trim()) primary.asset = patch.asset;
+  if (patch.amount != null) primary.amount = patch.amount;
+  if (patch.stopLossUsd !== undefined) primary.stopLossUsd = patch.stopLossUsd;
+  if (patch.takeProfitUsd !== undefined)
+    primary.takeProfitUsd = patch.takeProfitUsd;
+  if (patch.maxSlippageBps !== undefined)
+    primary.maxSlippageBps = patch.maxSlippageBps;
+  if (patch.reasoning != null && patch.reasoning.trim())
+    primary.reasoning = patch.reasoning;
+  return withDraftStatus({ ...draft, primary });
+}
+
+/** Parse a natural-language field edit into a primary patch. */
+export function patchFromUserText(
+  userText: string,
+  current: PolicyDraftItem,
+): Partial<PolicyDraftItem> {
+  const t = userText.trim();
+  const patch: Partial<PolicyDraftItem> = {};
+
+  const amt =
+    t.match(
+      /\b(?:make\s+it|set\s+(?:amount\s+)?(?:to\s+)?|use|amount\s*[:=]?\s*)(\d+(?:\.\d+)?)\s*(eth|weth|usdc)?\b/i,
+    ) || t.match(/^(\d+(?:\.\d+)?)\s*(eth|weth|usdc)?$/i);
+  if (amt) {
+    patch.amount = amt[1];
+    if (amt[2] && /usdc/i.test(amt[2])) patch.asset = "USDC";
+    else if (amt[2]) patch.asset = "WETH";
+  }
+
+  const stop = t.match(
+    /\b(?:stop(?:\s*loss)?|sl)\s*(?:to|=|:)?\s*\$?(\d+(?:\.\d+)?)/i,
+  );
+  if (stop) patch.stopLossUsd = Number(stop[1]);
+
+  const take = t.match(
+    /\b(?:take(?:\s*profit)?|tp|buy(?:\s*-?\s*dip)?(?:\s*trigger)?)\s*(?:to|=|:)?\s*\$?(\d+(?:\.\d+)?)/i,
+  );
+  if (take) patch.takeProfitUsd = Number(take[1]);
+
+  const slip = t.match(/\b(?:slip(?:page)?|bps)\s*(?:to|=|:)?\s*(\d+)\b/i);
+  if (slip) patch.maxSlippageBps = Number(slip[1]);
+
+  const asset = t.match(/\b(?:asset|token)\s*(?:to|=|:)?\s*(weth|eth|usdc|cbbtc|btc)\b/i);
+  if (asset) {
+    const a = asset[1].toLowerCase();
+    patch.asset =
+      a === "btc" || a === "cbbtc" ? "cbBTC" : a === "usdc" ? "USDC" : "WETH";
+  }
+
+  if (Object.keys(patch).length === 0 && current) {
+    // bare number with eth context already handled; leave empty for LLM-less stub
+  }
+  return patch;
+}
