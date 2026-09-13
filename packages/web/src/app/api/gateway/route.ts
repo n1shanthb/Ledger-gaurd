@@ -13,7 +13,7 @@ export const maxDuration = 120;
 type CacheEntry = { at: number; body: unknown };
 const cache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<unknown>>();
-const TTL_MS = 60_000;
+const TTL_MS = Number(process.env.GRAPH_COMPOSE_CACHE_MS ?? 300_000);
 
 function ensureKey() {
   const key =
@@ -60,6 +60,18 @@ async function once<T>(key: string, run: () => Promise<T>): Promise<T> {
 
 export async function GET(req: Request) {
   try {
+    if (
+      process.env.GRAPH_COMPOSE === "0" ||
+      process.env.NEXT_PUBLIC_GRAPH_COMPOSE === "0"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Compose Gateway paused (GRAPH_COMPOSE=0) — Receipt Graph still live for Activity/Agent.",
+        },
+        { status: 503 },
+      );
+    }
     ensureKey();
     const url = new URL(req.url);
     const first = Number(url.searchParams.get("first") ?? "8") || 8;

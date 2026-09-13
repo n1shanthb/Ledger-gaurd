@@ -81,7 +81,12 @@ export function PoliciesExplorer() {
         return list[0]?.id ?? null;
       });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      const raw = e instanceof Error ? e.message : String(e);
+      setErr(
+        /429|rate limit|Studio/i.test(raw)
+          ? `${raw} — hard-refresh (Ctrl+Shift+R). UI must use /api/receipt-graph (Gateway), not Studio.`
+          : raw,
+      );
     } finally {
       setLoading(false);
     }
@@ -89,8 +94,6 @@ export function PoliciesExplorer() {
 
   useEffect(() => {
     void load();
-    const id = setInterval(() => void load(), 30_000);
-    return () => clearInterval(id);
   }, [load]);
 
   const scoped = useMemo(() => {
@@ -121,6 +124,14 @@ export function PoliciesExplorer() {
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
       <div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="rounded-full border border-mist px-3 py-1.5 font-mono text-xs text-mute hover:border-paper hover:text-paper disabled:opacity-40"
+          >
+            {loading ? "…" : "Refresh"}
+          </button>
           <button
             type="button"
             disabled={!owner}

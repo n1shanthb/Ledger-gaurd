@@ -75,7 +75,7 @@ export function useComposeDecisions(opts?: {
     queryFn: () =>
       gatewayGet<ComposeDecisionsPayload>("decisions", 8, opts?.crossChain),
     enabled: opts?.enabled ?? true,
-    staleTime: 55_000,
+    staleTime: 280_000,
     retry: 1,
     retryDelay: 2_500,
   });

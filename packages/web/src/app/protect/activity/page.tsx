@@ -18,7 +18,11 @@ export default async function ProtectActivityPage() {
     kills = data.killSwitches;
     policies = data.policies;
   } catch (e) {
-    error = e instanceof Error ? e.message : String(e);
+    const msg = e instanceof Error ? e.message : String(e);
+    // Don't blank the page — on-chain pending rows still work in the timeline
+    error = /429|rate limit|busy/i.test(msg)
+      ? "Receipt Graph busy (429). Showing on-chain pending only — restart web if still on Studio URL; Gateway should be live."
+      : msg;
   }
 
   return (
@@ -26,7 +30,7 @@ export default async function ProtectActivityPage() {
       <AppShell
         eyebrow="Activity"
         title="Activity"
-        subtitle="Fills, kill events, and indexed policy changes. Payments without execution are labeled separately in Agent room."
+        subtitle="Fills, kill events, and indexed policy changes. Click a row for bands, trigger, and fill price. Payments without execution are labeled separately in Agent room."
       >
         <ActivityTimeline
           receipts={receipts}

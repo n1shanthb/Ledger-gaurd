@@ -16,13 +16,31 @@ function utilPct(n: number | null | undefined) {
 }
 
 export function ComposeProof() {
-  const q = useComposeDecisions();
+  const composeOn =
+    process.env.NEXT_PUBLIC_GRAPH_COMPOSE !== "0";
+  const q = useComposeDecisions({ enabled: composeOn });
   const missingKey =
     q.isError && String(q.error?.message ?? "").includes("GRAPH_API_KEY");
 
   const gate = q.data?.gate;
   const lending = q.data?.lending;
   const dex = q.data?.dex;
+
+  if (!composeOn) {
+    return (
+      <section className="mt-10 rounded-xl border border-line bg-panel p-4">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-mute">
+          Live Gateway
+        </p>
+        <p className="mt-2 text-sm text-mute">
+          Compose Messari fan-out paused (
+          <code className="text-paper">NEXT_PUBLIC_GRAPH_COMPOSE=0</code>) —
+          saves query quota while recording. Receipt Graph still serves Activity
+          + Agent.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="mt-10 rounded-xl border border-line bg-panel p-4">
