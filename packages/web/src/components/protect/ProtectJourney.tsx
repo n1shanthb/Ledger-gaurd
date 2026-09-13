@@ -5,6 +5,7 @@ import { PolicyLevelField } from "@/components/PolicyLevelField";
 import { PolicyPriceChart } from "@/components/PolicyPriceChart";
 import { AgentCompanionRail } from "@/components/protect/AgentCompanionRail";
 import { JourneyStepper } from "@/components/protect/JourneyStepper";
+import { LedgerWallet } from "@/components/protect/LedgerWallet";
 import { SystemReadiness } from "@/components/protect/SystemReadiness";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, Panel, StatusBanner } from "@/components/ui/Panel";
@@ -95,7 +96,8 @@ export function ProtectJourney() {
             Device readiness
           </h2>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-mute">
-            One step: unlock Ledger, open the Ethereum app, then connect.
+            Unlock Ledger, open the Ethereum app, connect, then read the wallet
+            on Base.
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-3">
             {j.conn.status !== "connected" ? (
@@ -128,12 +130,9 @@ export function ProtectJourney() {
               disabled={!j.connected || j.holdingsLoading}
               onClick={() => void j.readAddressAndBalances()}
             >
-              {j.holdingsLoading ? "Loading…" : "Read balances"}
+              {j.holdingsLoading ? "Reading wallet…" : "Open wallet"}
             </Button>
           </div>
-          {j.ledgerAddress && (
-            <p className="mt-3 font-mono text-xs text-mute">{j.ledgerAddress}</p>
-          )}
           {j.connected && (
             <div className="mt-4">
               <Button
@@ -150,52 +149,66 @@ export function ProtectJourney() {
               )}
             </div>
           )}
+          {(j.holdings.length > 0 || j.holdingsLoading) && (
+            <div className="mt-8">
+              <LedgerWallet
+                address={j.ledgerAddress}
+                accountLabel={
+                  ACCOUNTS.find((a) => a.index === j.accountIndex)?.label
+                }
+                holdings={j.holdings}
+                loading={j.holdingsLoading}
+                error={j.holdingsErr}
+                onRefresh={() => void j.readAddressAndBalances()}
+              />
+              {j.holdings.length > 0 && !j.holdingsLoading && (
+                <div className="mt-4">
+                  <Button onClick={() => j.goStage("asset")}>
+                    Choose asset to protect
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </Panel>
       )}
 
       {j.stage === "asset" && (
         <Panel>
-          <h2 className="font-display text-xl text-paper">Choose an asset</h2>
-          <p className="mt-1 text-sm text-mute">
-            Live Pyth spots when the feed responds. USDC is for buy-dip spend only.
+          <h2 className="font-display text-xl text-paper">Your Ledger wallet</h2>
+          <p className="mt-1 max-w-xl text-sm text-mute">
+            Live Base balances for this account. Pick an asset to protect — USDC
+            is spend-only for buy-dip.
           </p>
-          {j.holdingsErr && (
-            <p className="mt-3 text-sm text-kill">{j.holdingsErr}</p>
-          )}
-          {j.holdings.length === 0 && !j.holdingsLoading && (
-            <EmptyState
-              title="No balances yet"
-              body="Go back and read balances from Ledger, or refresh after funding gas."
-              action={
-                <Button variant="secondary" onClick={() => j.goStage("device")}>
-                  Back to device
-                </Button>
+          <div className="mt-6">
+            <LedgerWallet
+              address={j.ledgerAddress}
+              accountLabel={
+                ACCOUNTS.find((a) => a.index === j.accountIndex)?.label
               }
+              holdings={j.holdings}
+              loading={j.holdingsLoading}
+              error={j.holdingsErr}
+              onRefresh={() => void j.readAddressAndBalances()}
+              onSelect={(h) => j.protectAsset(h)}
             />
+          </div>
+          {j.holdings.length === 0 && !j.holdingsLoading && (
+            <div className="mt-4">
+              <EmptyState
+                title="Wallet not loaded"
+                body="Connect Ledger and open the wallet to read balances on Base."
+                action={
+                  <Button
+                    variant="secondary"
+                    onClick={() => j.goStage("device")}
+                  >
+                    Back to device
+                  </Button>
+                }
+              />
+            </div>
           )}
-          <ul className="mt-6 divide-y divide-line border-y border-line">
-            {j.holdings.map((h) => (
-              <li key={h.id}>
-                <button
-                  type="button"
-                  disabled={h.id === "usdc"}
-                  onClick={() => j.protectAsset(h)}
-                  className="flex w-full items-center justify-between gap-4 py-5 text-left transition hover:bg-signal/[0.03] disabled:opacity-40"
-                >
-                  <div>
-                    <p className="font-display text-xl text-paper">{h.symbol}</p>
-                    <p className="mt-1 font-mono text-xs text-mute">
-                      {h.balanceOk ? h.balanceFormatted : "?"}
-                      {h.spotUsd != null && ` · $${h.spotUsd.toFixed(2)}`}
-                    </p>
-                  </div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-signal">
-                    {h.id === "usdc" ? "Buy-dip only" : "Protect →"}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
         </Panel>
       )}
 
