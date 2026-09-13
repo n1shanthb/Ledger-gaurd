@@ -1,6 +1,7 @@
 import { Syne, DM_Sans, JetBrains_Mono } from "next/font/google";
 import type { Metadata } from "next";
 import { QueryProvider } from "@/components/QueryProvider";
+import { ProtectionProvider } from "@/components/ProtectionProvider";
 import "./globals.css";
 
 const display = Syne({
@@ -33,7 +34,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${display.variable} ${sans.variable} ${mono.variable} font-sans antialiased`}
       >
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <ProtectionProvider>{children}</ProtectionProvider>
+        </QueryProvider>
       </body>
     </html>
   );
