@@ -94,8 +94,15 @@ async function fetchSpotHermes1e8(feedId: string): Promise<bigint> {
   return toUsd1e8(BigInt(p.price), p.expo ?? -8);
 }
 
-/** Prefer on-chain spot; Hermes only if chain read fails. */
+/** UI / agent quotes — not Autopilot. Prefer latest Hermes; on-chain is last posted (can lag). */
 export async function fetchSpotUsd1e8(feedId: string): Promise<bigint> {
+  if (process.env.PYTH_API_KEY) {
+    try {
+      return await fetchSpotHermes1e8(feedId);
+    } catch (e) {
+      console.warn("[lga] Hermes spot failed, trying on-chain", e);
+    }
+  }
   try {
     return await fetchSpotOnChain1e8(feedId);
   } catch (e) {
@@ -155,4 +162,58 @@ export function shouldTrigger(
   if (stopLoss > 0n && spot <= stopLoss) return "STOP_LOSS";
   if (takeProfit > 0n && spot >= takeProfit) return "TAKE_PROFIT";
   return null;
+}
+
+/** |a-b|/ref in bps (100 = 1%). */
+export function priceDiffBps(a: bigint, b: bigint): number {
+  if (a <= 0n || b <= 0n) return Number.POSITIVE_INFINITY;
+  const diff = a > b ? a - b : b - a;
+  return Number((diff * 10_000n) / a);
+}
+
+/**
+ * Autopilot truth: latest Hermes price (= the VAA we will post). GPM reads that
+ * update, not the stale slot before the tx. On-chain view is optional telemetry.
+ */
+export async function confirmTriggerForExecute(
+  feedId: string,
+  stopLoss: bigint,
+  takeProfit: bigint,
+): Promise<
+  | { ok: true; trigger: "STOP_LOSS" | "TAKE_PROFIT"; spot: bigint; onchainLagBps?: number }
+  | { ok: false; reason: string; spot?: bigint }
+> {
+  let spot: bigint;
+  try {
+    spot = await fetchSpotHermes1e8(feedId);
+  } catch (e) {
+    return {
+      ok: false,
+      reason: `Pyth latest failed: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+
+  const trigger = shouldTrigger(spot, stopLoss, takeProfit);
+  if (!trigger) {
+    return {
+      ok: false,
+      reason: `not in band (spot=${Number(spot) / 1e8} stop=${Number(stopLoss) / 1e8} take=${Number(takeProfit) / 1e8})`,
+      spot,
+    };
+  }
+
+  let onchainLagBps: number | undefined;
+  try {
+    const onchain = await fetchSpotOnChain1e8(feedId);
+    onchainLagBps = priceDiffBps(spot, onchain);
+    if (onchainLagBps > 50) {
+      console.log(
+        `[lga] pyth on-chain lag ${onchainLagBps}bps (stored=${Number(onchain) / 1e8} latest=${Number(spot) / 1e8})`,
+      );
+    }
+  } catch {
+    /* ignore — execute uses Hermes VAAs only */
+  }
+
+  return { ok: true, trigger, spot, onchainLagBps };
 }

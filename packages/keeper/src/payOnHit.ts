@@ -10,7 +10,8 @@ export function startPayOnHit(secrets: KeeperSecrets) {
     `http://127.0.0.1:${process.env.PORT ?? process.env.KEEPER_PORT ?? 3001}`;
   process.env.KEEPER_URL = base;
 
-  const paid = new Set<string>();
+  /** Paid attempt finished (fill or definitive fail) — do not re-burn HBAR. */
+  const settled = new Set<string>();
   console.log(`[lga] pay-on-hit Autopilot watch every ${watchMs}ms → ${base}`);
 
   async function tick() {
@@ -20,9 +21,11 @@ export function startPayOnHit(secrets: KeeperSecrets) {
         console.log("[lga] pay-on-hit Autopilot: no band hits");
         return;
       }
-      const fresh = hits.filter((h) => !paid.has(h.pol.id));
+      const fresh = hits.filter((h) => !settled.has(h.pol.id));
       if (!fresh.length) {
-        console.log("[lga] pay-on-hit Autopilot: hits already paid this process");
+        console.log(
+          "[lga] pay-on-hit Autopilot: hits already settled this process (fill or not-triggered)",
+        );
         return;
       }
       for (const h of fresh) {
@@ -35,8 +38,18 @@ export function startPayOnHit(secrets: KeeperSecrets) {
       });
       console.log("[lga] pay-on-hit Autopilot status", result.status, result.body.slice(0, 400));
       if (result.hashscanUrl) console.log("[lga] hashscan", result.hashscanUrl);
-      if (result.status >= 200 && result.status < 300) {
-        for (const h of fresh) paid.add(h.pol.id);
+
+      const body = result.body ?? "";
+      const ok = result.status >= 200 && result.status < 300;
+      const notTriggered = /not triggered/i.test(body);
+      // Settle on fill success OR definitive on-chain reject — stop HBAR burn loop
+      if (ok || notTriggered) {
+        for (const h of fresh) settled.add(h.pol.id);
+        if (notTriggered) {
+          console.warn(
+            "[lga] pay-on-hit: on-chain Pyth said not triggered (spot moved vs stop). Settled — no re-pay.",
+          );
+        }
       }
     } catch (e) {
       console.error("[lga] pay-on-hit Autopilot error", e instanceof Error ? e.message : e);
