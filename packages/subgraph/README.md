@@ -30,7 +30,9 @@ npx graph deploy ledger-guardian-agent \
   --version-label v0.0.1
 ```
 
-**Live (v0.0.4):** [Studio](https://thegraph.com/studio/subgraph/ledger-guardian-agent) · Query `https://api.studio.thegraph.com/query/1758709/ledger-guardian-agent/v0.0.4`
+**Live (v0.0.4 on network):** [Explorer](https://thegraph.com/explorer/subgraphs/GfvNLa3ym7X6bNDNm6oyqvHGgW2anbzTKhEo7cFPjhvz?view=Query&chain=arbitrum-one) · Query `https://gateway.thegraph.com/api/subgraphs/id/GfvNLa3ym7X6bNDNm6oyqvHGgW2anbzTKhEo7cFPjhvz` (Bearer `GRAPH_API_KEY`)
+
+Studio deploy is still used to build/publish; **query Autopilot + UI against the Gateway URL** (avoids Studio 3k/day).
 
 After sync, set `SUBGRAPH_QUERY_URL` in Key Ring (`npm run ring:enroll`). **Do not mock this URL.**
 

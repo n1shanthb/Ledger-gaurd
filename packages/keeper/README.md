@@ -138,7 +138,7 @@ Proofs: [docs/proofs/phase-d.md](../../docs/proofs/phase-d.md).
 | `WALLET_PASS` | Ring password |
 | `POLL_MS` | `0` prize; `30000` dev autopoll |
 | `KEEPER_URL` | pay / pay-on-hit target |
-| `WATCH_MS` | pay-on-hit interval (default 15000) |
+| `WATCH_MS` | pay-on-hit interval (default **30000**) |
 | `LGA_SECRETS_SOURCE` | `ring` or `env` |
 
 Railway: [RAILWAY.md](./RAILWAY.md)
