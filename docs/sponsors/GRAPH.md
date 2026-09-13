@@ -3,7 +3,7 @@
 **Track pitch:** Best AI **Use Case** (From Scratch) — Receipt Graph is load-bearing for keeper automation. Optional second surface: Composable / Messari fan-out via `@lga/graph-data`.  
 **Network:** Indexes **Base mainnet** Guardian events. Studio + Gateway are live production query surfaces (no mocked subgraph data).
 
-![LGA six-role architecture](../assets/lga-six-role-architecture.svg)
+![LGA six-role architecture](../assets/lga-six-role-architecture.png)
 
 **Receipt Clerk** is the only LLM role allowed to query Receipt Graph. **Band Autopilot** loads policies from the same index before Pyth / fill.
 

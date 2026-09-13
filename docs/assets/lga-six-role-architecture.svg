@@ -1,79 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
-  <title id="title">LGA six-role taxonomy</title>
-  <desc id="desc">Intent Composer to Band Autopilot to Market Solver to x402 Payer to Session Driver to Receipt Clerk</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0b0d10"/>
-      <stop offset="100%" stop-color="#141820"/>
-    </linearGradient>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L6,3 L0,6 Z" fill="#b8f000"/>
-    </marker>
-  </defs>
-  <rect width="960" height="420" fill="url(#bg)"/>
-  <text x="48" y="42" fill="#b8f000" font-family="ui-monospace,Consolas,monospace" font-size="13" letter-spacing="3">LGA · 6-ROLE TAXONOMY</text>
-  <text x="48" y="68" fill="#ece8e1" font-family="Georgia,serif" font-size="22">Hardware-bounded delegation on Base mainnet</text>
-
-  <!-- Role boxes -->
-  <g font-family="ui-sans-serif,system-ui,sans-serif">
-    <rect x="40" y="100" width="130" height="88" rx="6" fill="#1a1f28" stroke="#b8f000" stroke-width="1.5"/>
-    <text x="105" y="132" text-anchor="middle" fill="#b8f000" font-size="11" font-weight="600">1 · INTENT</text>
-    <text x="105" y="152" text-anchor="middle" fill="#ece8e1" font-size="13" font-weight="700">Composer</text>
-    <text x="105" y="172" text-anchor="middle" fill="#8a8780" font-size="10">draft / classify</text>
-
-    <rect x="190" y="100" width="130" height="88" rx="6" fill="#1a1f28" stroke="#6a9" stroke-width="1.5"/>
-    <text x="255" y="132" text-anchor="middle" fill="#6a9" font-size="11" font-weight="600">2 · BAND</text>
-    <text x="255" y="152" text-anchor="middle" fill="#ece8e1" font-size="13" font-weight="700">Autopilot</text>
-    <text x="255" y="172" text-anchor="middle" fill="#8a8780" font-size="10">pay-on-hit</text>
-
-    <rect x="340" y="100" width="130" height="88" rx="6" fill="#1a1f28" stroke="#6a9" stroke-width="1.5"/>
-    <text x="405" y="132" text-anchor="middle" fill="#6a9" font-size="11" font-weight="600">3 · MARKET</text>
-    <text x="405" y="152" text-anchor="middle" fill="#ece8e1" font-size="13" font-weight="700">Solver</text>
-    <text x="405" y="172" text-anchor="middle" fill="#8a8780" font-size="10">Messari / Pyth</text>
-
-    <rect x="490" y="100" width="130" height="88" rx="6" fill="#1a1f28" stroke="#f5a" stroke-width="1.5"/>
-    <text x="555" y="132" text-anchor="middle" fill="#f5a" font-size="11" font-weight="600">4 · x402</text>
-    <text x="555" y="152" text-anchor="middle" fill="#ece8e1" font-size="13" font-weight="700">Payer</text>
-    <text x="555" y="172" text-anchor="middle" fill="#8a8780" font-size="10">HBAR settle</text>
-
-    <rect x="640" y="100" width="130" height="88" rx="6" fill="#1a1f28" stroke="#58a6ff" stroke-width="1.5"/>
-    <text x="705" y="132" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">5 · SESSION</text>
-    <text x="705" y="152" text-anchor="middle" fill="#ece8e1" font-size="13" font-weight="700">Driver</text>
-    <text x="705" y="172" text-anchor="middle" fill="#8a8780" font-size="10">executePolicy</text>
-
-    <rect x="790" y="100" width="130" height="88" rx="6" fill="#1a1f28" stroke="#b8f000" stroke-width="1.5"/>
-    <text x="855" y="132" text-anchor="middle" fill="#b8f000" font-size="11" font-weight="600">6 · RECEIPT</text>
-    <text x="855" y="152" text-anchor="middle" fill="#ece8e1" font-size="13" font-weight="700">Clerk</text>
-    <text x="855" y="172" text-anchor="middle" fill="#8a8780" font-size="10">Graph MCP</text>
-  </g>
-
-  <!-- arrows between roles -->
-  <line x1="170" y1="144" x2="188" y2="144" stroke="#b8f000" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="320" y1="144" x2="338" y2="144" stroke="#b8f000" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="470" y1="144" x2="488" y2="144" stroke="#b8f000" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="620" y1="144" x2="638" y2="144" stroke="#b8f000" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="770" y1="144" x2="788" y2="144" stroke="#b8f000" stroke-width="2" marker-end="url(#arrow)"/>
-
-  <!-- Hardware boundary strip -->
-  <text x="48" y="230" fill="#8a8780" font-family="ui-monospace,Consolas,monospace" font-size="11" letter-spacing="2">CRYPTOGRAPHIC BOUNDARY</text>
-
-  <rect x="40" y="248" width="280" height="110" rx="6" fill="#12151c" stroke="#b8f000" stroke-width="1"/>
-  <text x="56" y="278" fill="#b8f000" font-family="ui-monospace,Consolas,monospace" font-size="12">LEDGER MASTER KEY</text>
-  <text x="56" y="300" fill="#ece8e1" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">Intent Composer / clear-sign</text>
-  <text x="56" y="322" fill="#8a8780" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">HITL · OLED · never leaves device</text>
-  <text x="56" y="342" fill="#8a8780" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">policy + kill only</text>
-
-  <rect x="340" y="248" width="280" height="110" rx="6" fill="#12151c" stroke="#f5a" stroke-width="1"/>
-  <text x="356" y="278" fill="#f5a" font-family="ui-monospace,Consolas,monospace" font-size="12">HEDERA · KEY RING</text>
-  <text x="356" y="300" fill="#ece8e1" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">x402 Payer micro-settlements</text>
-  <text x="356" y="322" fill="#8a8780" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">HBAR via Blocky402 · HCS audit</text>
-  <text x="356" y="342" fill="#8a8780" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">pay:trigger capability</text>
-
-  <rect x="640" y="248" width="280" height="110" rx="6" fill="#12151c" stroke="#58a6ff" stroke-width="1"/>
-  <text x="656" y="278" fill="#58a6ff" font-family="ui-monospace,Consolas,monospace" font-size="12">BASE SESSION KEY</text>
-  <text x="656" y="300" fill="#ece8e1" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">Session Driver execution</text>
-  <text x="656" y="322" fill="#8a8780" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">SessionKeyValidator · GPM</text>
-  <text x="656" y="342" fill="#8a8780" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">band-gated Uniswap fill</text>
-
-  <text x="48" y="400" fill="#5a5750" font-family="ui-monospace,Consolas,monospace" font-size="11">LLM drafts · Payer settles · Driver fills · Clerk indexes  never one key for all three</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420">
+  <rect width="960" height="420" fill="#0b0d10"/>
+  <text x="48" y="40" fill="#b8f000" font-family="monospace" font-size="13">LGA Â· 6-ROLE TAXONOMY</text>
+  <text x="48" y="66" fill="#ece8e1" font-family="sans-serif" font-size="20">Hardware-bounded DEX on Base mainnet</text>
+  <rect x="40" y="96" width="130" height="88" rx="6" fill="#1a1f28" stroke="#b8f000" stroke-width="1.5"/>
+  <text x="105" y="128" text-anchor="middle" fill="#b8f000" font-family="sans-serif" font-size="11">1 Â· INTENT</text>
+  <text x="105" y="150" text-anchor="middle" fill="#ece8e1" font-family="sans-serif" font-size="13">Composer</text>
+  <text x="105" y="170" text-anchor="middle" fill="#8a8780" font-family="sans-serif" font-size="10">draft / classify</text>
+  <rect x="190" y="96" width="130" height="88" rx="6" fill="#1a1f28" stroke="#66aa99" stroke-width="1.5"/>
+  <text x="255" y="128" text-anchor="middle" fill="#66aa99" font-family="sans-serif" font-size="11">2 Â· BAND</text>
+  <text x="255" y="150" text-anchor="middle" fill="#ece8e1" font-family="sans-serif" font-size="13">Autopilot</text>
+  <text x="255" y="170" text-anchor="middle" fill="#8a8780" font-family="sans-serif" font-size="10">pay-on-hit</text>
+  <rect x="340" y="96" width="130" height="88" rx="6" fill="#1a1f28" stroke="#66aa99" stroke-width="1.5"/>
+  <text x="405" y="128" text-anchor="middle" fill="#66aa99" font-family="sans-serif" font-size="11">3 Â· MARKET</text>
+  <text x="405" y="150" text-anchor="middle" fill="#ece8e1" font-family="sans-serif" font-size="13">Solver</text>
+  <text x="405" y="170" text-anchor="middle" fill="#8a8780" font-family="sans-serif" font-size="10">Messari / Pyth</text>
+  <rect x="490" y="96" width="130" height="88" rx="6" fill="#1a1f28" stroke="#ff55aa" stroke-width="1.5"/>
+  <text x="555" y="128" text-anchor="middle" fill="#ff55aa" font-family="sans-serif" font-size="11">4 Â· x402</text>
+  <text x="555" y="150" text-anchor="middle" fill="#ece8e1" font-family="sans-serif" font-size="13">Payer</text>
+  <text x="555" y="170" text-anchor="middle" fill="#8a8780" font-family="sans-serif" font-size="10">HBAR settle</text>
+  <rect x="640" y="96" width="130" height="88" rx="6" fill="#1a1f28" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="705" y="128" text-anchor="middle" fill="#58a6ff" font-family="sans-serif" font-size="11">5 Â· SESSION</text>
+  <text x="705" y="150" text-anchor="middle" fill="#ece8e1" font-family="sans-serif" font-size="13">Driver</text>
+  <text x="705" y="170" text-anchor="middle" fill="#8a8780" font-family="sans-serif" font-size="10">executePolicy</text>
+  <rect x="790" y="96" width="130" height="88" rx="6" fill="#1a1f28" stroke="#b8f000" stroke-width="1.5"/>
+  <text x="855" y="128" text-anchor="middle" fill="#b8f000" font-family="sans-serif" font-size="11">6 Â· RECEIPT</text>
+  <text x="855" y="150" text-anchor="middle" fill="#ece8e1" font-family="sans-serif" font-size="13">Clerk</text>
+  <text x="855" y="170" text-anchor="middle" fill="#8a8780" font-family="sans-serif" font-size="10">Graph MCP</text>
+  <line x1="170" y1="140" x2="186" y2="140" stroke="#b8f000" stroke-width="2"/>
+  <line x1="320" y1="140" x2="336" y2="140" stroke="#b8f000" stroke-width="2"/>
+  <line x1="470" y1="140" x2="486" y2="140" stroke="#b8f000" stroke-width="2"/>
+  <line x1="620" y1="140" x2="636" y2="140" stroke="#b8f000" stroke-width="2"/>
+  <line x1="770" y1="140" x2="786" y2="140" stroke="#b8f000" stroke-width="2"/>
+  <text x="48" y="228" fill="#8a8780" font-family="monospace" font-size="11">CRYPTOGRAPHIC BOUNDARY</text>
+  <rect x="40" y="244" width="280" height="110" rx="6" fill="#12151c" stroke="#b8f000" stroke-width="1"/>
+  <text x="56" y="274" fill="#b8f000" font-family="monospace" font-size="12">LEDGER MASTER KEY</text>
+  <text x="56" y="296" fill="#ece8e1" font-family="sans-serif" font-size="13">clear-sign HITL</text>
+  <text x="56" y="318" fill="#8a8780" font-family="sans-serif" font-size="12">OLED - never leaves device</text>
+  <text x="56" y="338" fill="#8a8780" font-family="sans-serif" font-size="11">policy + kill only</text>
+  <rect x="340" y="244" width="280" height="110" rx="6" fill="#12151c" stroke="#ff55aa" stroke-width="1"/>
+  <text x="356" y="274" fill="#ff55aa" font-family="monospace" font-size="12">HEDERA - KEY RING</text>
+  <text x="356" y="296" fill="#ece8e1" font-family="sans-serif" font-size="13">x402 Payer micro-settlements</text>
+  <text x="356" y="318" fill="#8a8780" font-family="sans-serif" font-size="12">HBAR via Blocky402 + HCS</text>
+  <text x="356" y="338" fill="#8a8780" font-family="sans-serif" font-size="11">pay:trigger capability</text>
+  <rect x="640" y="244" width="280" height="110" rx="6" fill="#12151c" stroke="#58a6ff" stroke-width="1"/>
+  <text x="656" y="274" fill="#58a6ff" font-family="monospace" font-size="12">BASE SESSION KEY</text>
+  <text x="656" y="296" fill="#ece8e1" font-family="sans-serif" font-size="13">Session Driver execution</text>
+  <text x="656" y="318" fill="#8a8780" font-family="sans-serif" font-size="12">SessionKeyValidator + GPM</text>
+  <text x="656" y="338" fill="#8a8780" font-family="sans-serif" font-size="11">band-gated Uniswap fill</text>
+  <text x="48" y="396" fill="#5a5750" font-family="monospace" font-size="11">LLM drafts / Payer settles / Driver fills / Clerk indexes - never one key for all three</text>
 </svg>

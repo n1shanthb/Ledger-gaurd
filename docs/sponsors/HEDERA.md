@@ -3,7 +3,7 @@
 **Track:** AI & Agentic Payments on Hedera (x402 + Blocky402).  
 **Production shape:** Public keeper host on Railway; unpaid `/trigger` returns live **402**; **x402 Payer** / **Band Autopilot** settle HBAR then evaluate **Base mainnet** policies. Payment meters attempts — fills stay on Base (Session Driver).
 
-![LGA six-role architecture](../assets/lga-six-role-architecture.svg)
+![LGA six-role architecture](../assets/lga-six-role-architecture.png)
 
 ---
 
@@ -166,5 +166,5 @@ Satisfies: **“≥1 real paid request end-to-end”** — proof #2.
 ## Honest limitations
 
 1. **Payment ≠ fill** — proven paid runs often return `evaluated:0` / empty `executed` when no policy is in band. Do not imply every HashScan settle produces a Basescan fill.
-2. **Testnet HBAR** — demo network is `hedera:testnet`; mainnet path is documented as optional, not the captured proof.
+2. **Testnet HBAR** — demo network is `hedera:testnet`; mainnet path is planned on roadmap, not the captured proof.
 

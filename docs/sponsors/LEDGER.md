@@ -3,7 +3,7 @@
 **Track:** AI Agents × Ledger · **Start from Scratch** (not Continuity).  
 **Network:** **Base mainnet** clear-sign + kill + session fills. Production HITL + Key Ring keeper.
 
-![LGA six-role architecture](../assets/lga-six-role-architecture.svg)
+![LGA six-role architecture](../assets/lga-six-role-architecture.png)
 
 ---
 

@@ -9,7 +9,7 @@
 
 **Hardware-bounded delegation for autonomous DeFi exits — tested on Base mainnet, built for production.**
 
-![LGA six-role architecture](docs/assets/lga-six-role-architecture.svg)
+![LGA six-role architecture](docs/assets/lga-six-role-architecture.png)
 
 ```mermaid
 flowchart LR
