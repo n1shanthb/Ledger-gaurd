@@ -1,3 +1,5 @@
+import { stripAgentJargon } from "@/lib/chatCopy";
+
 export type AgentId =
   | "composer"
   | "autopilot"
@@ -5,6 +7,28 @@ export type AgentId =
   | "payer"
   | "driver"
   | "clerk";
+
+function softLast(raw: string, max = 90): string {
+  const s = stripAgentJargon(raw)
+    .replace(/pipeline=\w+/gi, "")
+    .replace(/capability[^\s]*/gi, "")
+    .replace(/cap_[a-z0-9-]+/gi, "")
+    .replace(/subgraph\s*\d+/gi, "graph busy")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (/429|busy|rate limit/i.test(raw)) {
+    return "Graph is busy — try again in a moment";
+  }
+  if (/paid \/trigger|payment only/i.test(s)) {
+    return "Payment landed — still waiting on a fill";
+  }
+  if (/Driver ready|Fill only/i.test(s)) {
+    return "Watching for a band hit on Base";
+  }
+  // Prefer the live sentence over robotic labels
+  if (s.length > 8 && !/^code:/i.test(s)) return s.slice(0, max);
+  return (s || "Working…").slice(0, max);
+}
 
 export type StrategyType = "STOP_LOSS" | "TAKE_PROFIT" | "BUY_DIP" | "LP_RANGE";
 
@@ -61,6 +85,35 @@ export function withDraftStatus(d: PolicyDraft): PolicyDraft {
   };
 }
 
+export type Evidence = {
+  label: string;
+  value: string;
+  source: "pyth" | "messari" | "dex" | "gate";
+};
+
+export type AgentAction =
+  | { type: "none" }
+  | { type: "open_form"; payload: { kind: StrategyType; draft: PolicyDraft } }
+  | {
+      type: "patch_form";
+      payload: { patch: Partial<PolicyDraftItem>; reason?: string };
+    }
+  | {
+      /** Explain-advise: structured evidence, no CTA / no form open. */
+      type: "show_evidence";
+      payload: { evidence: Evidence[] };
+    }
+  | {
+      type: "suggest_policy";
+      payload: { draft: PolicyDraft; cta: string; evidence: Evidence[] };
+    };
+
+export type UiState = {
+  formOpen: boolean;
+  formKind: StrategyType | null;
+  draft: PolicyDraftItem | null;
+};
+
 export type AgentEvent =
   | { type: "run_start"; runId: string }
   | { type: "agent_start"; runId: string; agent: AgentId; model: string }
@@ -84,7 +137,7 @@ export type AgentEvent =
   | { type: "gate"; runId: string; proceed: boolean; reasons: string[] }
   | { type: "policy_draft"; runId: string; draft: PolicyDraft }
   | { type: "agent_end"; runId: string; agent: AgentId }
-  | { type: "run_end"; runId: string; reply: string }
+  | { type: "run_end"; runId: string; reply: string; action: AgentAction }
   | { type: "error"; runId: string; agent?: AgentId; message: string };
 
 export type NodeState = "idle" | "active" | "tool" | "done" | "error";
@@ -108,7 +161,9 @@ export type GraphState = {
   reply: string;
   runId: string | null;
   gate: { proceed: boolean; reasons: string[] } | null;
+  /** Telemetry / 3D only — not the live form source of truth. */
   policyDraft: PolicyDraft | null;
+  action: AgentAction;
 };
 
 const AGENTS: AgentId[] = [
@@ -136,6 +191,7 @@ export function emptyGraph(): GraphState {
     runId: null,
     gate: null,
     policyDraft: null,
+    action: { type: "none" },
   };
 }
 
@@ -146,6 +202,7 @@ export function softResetGraph(prev: GraphState, runId: string): GraphState {
     ...base,
     runId,
     policyDraft: prev.policyDraft,
+    action: prev.action,
     log: [...prev.log, { t: Date.now(), line: `run ${runId}` }].slice(-80),
     reply: prev.reply,
   };
@@ -158,6 +215,7 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
     edges: prev.edges.map((e) => ({ ...e })),
     log: [...prev.log],
     policyDraft: prev.policyDraft,
+    action: prev.action,
   };
 
   const push = (line: string) => {
@@ -176,14 +234,16 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
       };
       push(`${ev.agent} · ${ev.model}`);
       break;
-    case "agent_message":
+    case "agent_message": {
+      const soft = softLast(ev.text);
       next.nodes[ev.agent] = {
         ...next.nodes[ev.agent],
         state: next.nodes[ev.agent].state === "tool" ? "tool" : "active",
-        last: ev.text.slice(0, 120),
+        last: soft,
       };
-      push(`${ev.agent}: ${ev.text.slice(0, 100)}`);
+      push(`${ev.agent}: ${soft}`);
       break;
+    }
     case "tool_start":
       next.nodes[ev.agent] = {
         ...next.nodes[ev.agent],
@@ -202,7 +262,7 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
       next.nodes[ev.agent] = {
         ...next.nodes[ev.agent],
         state: "active",
-        last: ev.summary ?? ev.tool,
+        last: softLast(ev.summary ?? ev.tool),
         activeTool: undefined,
       };
       next.edges = next.edges.map((e) =>
@@ -241,6 +301,7 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
       break;
     case "run_end":
       next.reply = ev.reply;
+      next.action = ev.action ?? { type: "none" };
       for (const a of AGENTS) {
         if (next.nodes[a].state === "active" || next.nodes[a].state === "tool") {
           next.nodes[a] = {
@@ -251,7 +312,11 @@ export function reduceEvent(prev: GraphState, ev: AgentEvent): GraphState {
         }
       }
       next.edges = next.edges.map((e) => ({ ...e, live: false }));
-      push("run end");
+      push(
+        next.action.type === "none"
+          ? "run end"
+          : `run end · action=${next.action.type}`,
+      );
       break;
     case "error":
       if (ev.agent) {

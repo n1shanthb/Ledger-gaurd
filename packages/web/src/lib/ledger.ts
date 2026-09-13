@@ -29,6 +29,12 @@ export function derivationPathForAccount(accountIndex: number): string {
 const USER_REJECT_ERROR_CODES = new Set(["6982", "6985"]);
 
 let dmkSingleton: DeviceManagementKit | null = null;
+/** Shared across Protect + Agent room so clear-sign reuses an open WebHID session. */
+let activeSessionId: DeviceSessionId | null = null;
+
+export function getActiveLedgerSession(): DeviceSessionId | null {
+  return activeSessionId;
+}
 
 export function getDMK(): DeviceManagementKit {
   if (!dmkSingleton) {
@@ -62,6 +68,7 @@ export async function connectLedger(): Promise<DeviceSessionId> {
         try {
           sub.unsubscribe();
           const sessionId = await dmk.connect({ device });
+          activeSessionId = sessionId;
           resolve(sessionId);
         } catch (err) {
           reject(err);
@@ -75,9 +82,16 @@ export async function connectLedger(): Promise<DeviceSessionId> {
   });
 }
 
+/** Prefer an open Protect session; otherwise open WebHID picker. */
+export async function ensureLedgerSession(): Promise<DeviceSessionId> {
+  if (activeSessionId) return activeSessionId;
+  return connectLedger();
+}
+
 export async function disconnectLedger(sessionId: DeviceSessionId): Promise<void> {
   const dmk = getDMK();
   await dmk.disconnect({ sessionId }).catch(() => undefined);
+  if (activeSessionId === sessionId) activeSessionId = null;
 }
 
 export function formatLedgerError(error: unknown): string {

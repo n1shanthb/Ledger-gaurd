@@ -2,6 +2,7 @@
 
 import type { JourneyStage } from "@/components/ProtectionProvider";
 import type { AgentId, GraphState } from "@/lib/agentEvents";
+import { stripAgentJargon } from "@/lib/chatCopy";
 
 const ROLES: {
   id: AgentId;
@@ -18,7 +19,7 @@ const ROLES: {
 ];
 
 const HINT: Partial<Record<JourneyStage, Partial<Record<AgentId, string>>>> = {
-  device: { clerk: "Holdings index after you connect and read balances." },
+  device: { clerk: "Wallet opens after connect — portfolio + Base balances from this Ledger account." },
   asset: { clerk: "Pick an asset with a live Pyth spot when available." },
   strategy: { composer: "Stop-loss, take-profit, or buy-dip." },
   limits: {
@@ -43,7 +44,10 @@ function nodeState(graph: GraphState | null, id: AgentId) {
 }
 
 function lastMsg(graph: GraphState | null, id: AgentId) {
-  return graph?.nodes[id]?.last;
+  const raw = graph?.nodes[id]?.last;
+  if (!raw) return null;
+  if (/429|busy|rate limit|subgraph/i.test(raw)) return "Graph busy — retry shortly";
+  return stripAgentJargon(raw).slice(0, 80);
 }
 
 export function AgentCompanionRail({
@@ -67,7 +71,9 @@ export function AgentCompanionRail({
           Companions
         </p>
       )}
-      <ul className="mt-4 grid gap-0 divide-y divide-line border-y border-line sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-3 xl:grid-cols-6">
+      <ul
+        className={`grid gap-0 divide-y divide-line border-y border-line sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-3 xl:grid-cols-6 ${compact ? "mt-0" : "mt-4"}`}
+      >
         {ROLES.map((r) => {
           const relevant = r.stages.includes(stage);
           const state = nodeState(graph ?? null, r.id);
@@ -91,7 +97,7 @@ export function AgentCompanionRail({
               <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-mute">
                 {state}
               </p>
-              <p className="mt-2 line-clamp-3 text-[12px] leading-snug text-mute">
+              <p className="mt-2 line-clamp-2 text-[12px] leading-snug text-mute">
                 {live || hint || "Standing by."}
               </p>
               {relevant && onAsk && (
